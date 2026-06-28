@@ -311,6 +311,31 @@ def apply_theme(app: QApplication) -> None:
             font-size: 14px;
         }
 
+        QLabel#PathLabel {
+            background: #f8fafc;
+            border: 1px solid #dbe3ee;
+            border-radius: 6px;
+            padding: 8px;
+            color: #44546a;
+            font-size: 12px;
+        }
+
+        QLabel#MaintenanceReport {
+            background: #f8fafc;
+            border: 1px solid #dbe3ee;
+            border-radius: 8px;
+            padding: 12px;
+            color: #44546a;
+        }
+
+        QLabel#PrivacyWarning {
+            background: #fff8e6;
+            border: 1px solid #f3d28b;
+            border-radius: 8px;
+            padding: 10px;
+            color: #7a4d00;
+        }
+
         QTextEdit#ChunkText,
         QTextBrowser#ChatHistory {
             background: #f8fafc;

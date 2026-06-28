@@ -1,6 +1,8 @@
 {
   "app": {
-    "title": "JW PubliStudy"
+    "title": "JW PubliStudy",
+    "version": "0.1.0",
+    "stage": "MVP"
   },
   "common": {
     "ok": "OK",
@@ -11,7 +13,11 @@
     "confirm": "Confirm",
     "error": "Error",
     "success": "Operation completed",
-    "copy": "Copy"
+    "copy": "Copy",
+    "open": "Open",
+    "refresh": "Refresh",
+    "processing": "Processing...",
+    "warning": "Warning"
   },
   "nav": {
     "home": "Home",
@@ -42,10 +48,12 @@
     "description": "Import and manage local publications in PDF or TXT format. This phase stores only files and metadata.",
     "import_button": "Import publication",
     "index_button": "Index",
+    "reindex_button": "Reindex",
     "index_all_button": "Index all",
     "rename_button": "Rename",
     "delete_button": "Delete",
-    "empty": "No publications imported. Import a PDF or TXT file to get started.",
+    "empty": "Import a PDF or TXT file to get started.",
+    "empty_filtered": "No publications match the selected filters.",
     "file_dialog": {
       "title": "Select publication",
       "filter": "Publications (*.pdf *.txt)"
@@ -73,6 +81,9 @@
       "pending_indexing": "Pending",
       "indexed": "Indexed",
       "error": "Error"
+    },
+    "status_tooltip": {
+      "error": "Indexing error: {error}"
     },
     "table": {
       "title": "Title",
@@ -147,7 +158,9 @@
     "description": "Search the indexed sources in your local library. In this phase search is text-based and does not use AI.",
     "search": {
       "placeholder": "Search indexed publications...",
-      "button": "Search"
+      "button": "Search",
+      "clear_button": "Clear search",
+      "textual_notice": "Search is text-based, not semantic."
     },
     "refresh_sources": "Refresh sources",
     "filters": {
@@ -189,9 +202,9 @@
       "copied_reference": "Reference copied to clipboard."
     },
     "reference": {
-      "page": "{title} - page {page}",
-      "pages": "{title} - pages {page_start}-{page_end}",
-      "chunk": "{title} - chunk {chunk}"
+      "page": "{title} — page {page}",
+      "pages": "{title} — pages {page_start}-{page_end}",
+      "chunk": "{title} — chunk {chunk}"
     },
     "page": {
       "none": "N/A"
@@ -209,19 +222,25 @@
     },
     "send": "Send",
     "clear": "Clear chat",
-    "copy_last_answer": "Copy last answer",
-    "empty": "Chat history is empty. Ask a question to get started.",
+      "copy_last_answer": "Copy last answer",
+      "copy_last_answer_with_sources": "Copy answer with sources",
+      "empty": "Chat history is empty. Ask a question to get started.",
+      "initial_hint": "Ask a question about indexed publications.",
     "user_label": "You",
     "assistant_label": "Assistant",
     "sources_title": "Sources used",
     "no_sources": "No sources used.",
-    "insufficient_sources": "There is not enough information in the indexed publications to answer.",
+      "insufficient_sources": "There is not enough information in the indexed publications to answer.",
+      "insufficient_sources_suggestion": "Try indexing more publications or rephrasing the question.",
     "local_model_error": "I cannot contact the local AI model. Check that the local server is running and that endpoint/model are correct.",
     "busy": "Generating answer...",
-    "answer_copied": "Last answer copied to clipboard.",
+      "answer_copied": "Last answer copied to clipboard.",
+      "answer_copied_with_sources": "Last answer with sources copied to clipboard.",
     "history_cleared": "Chat history cleared.",
     "confirm_clear_title": "Clear chat",
-    "confirm_clear_message": "Do you want to delete the local chat history?",
+      "confirm_clear_message": "Do you want to delete the local chat history?",
+      "remote_endpoint_warning": "You are using a non-local endpoint. Questions and sources may leave this computer.",
+      "shortcut_hint": "Ctrl+Enter sends the question.",
     "filters": {
       "language": "Language",
       "publication": "Publication",
@@ -248,6 +267,7 @@
   "settings": {
     "title": "Settings",
     "language": "Language",
+    "language_section": "Language",
     "language_description": "Choose the interface language. The preference is saved locally and applied the next time the app starts.",
     "language_option": {
       "it": "Italiano",
@@ -256,6 +276,8 @@
     },
     "ai_section": "Local AI model",
     "ai_description": "Configure a local server compatible with OpenAI Chat Completions. The app does not download models and does not use cloud by default.",
+    "ai_privacy_local": "The configured endpoint is local.",
+    "ai_privacy_remote_warning": "You are using a non-local endpoint. Questions and sources may be sent outside this computer.",
     "ai": {
       "endpoint": "Endpoint URL",
       "model": "Model name",
@@ -271,6 +293,74 @@
       "invalid_values": "Check the entered values.",
       "connection_success": "Local model connection succeeded.",
       "connection_failed": "Local model connection failed."
+    },
+    "data_section": "Local data",
+    "data_description": "Paths used by the app for publications, index, and chat history.",
+    "path": {
+      "app_data": "App data directory",
+      "publications": "Publications directory",
+      "index": "Index directory",
+      "metadata": "Metadata file",
+      "chat_history": "Chat history file"
+    },
+    "open_app_data": "Open data folder",
+    "open_publications": "Open publications folder",
+    "open_index": "Open index folder",
+    "stats_section": "Statistics",
+    "stats_description": "Local library summary.",
+    "stats": {
+      "refresh": "Refresh statistics",
+      "total_publications": "Total publications",
+      "imported_publications": "Imported",
+      "indexed_publications": "Indexed",
+      "error_publications": "With error",
+      "pending_publications": "Pending",
+      "total_chunks": "Total chunks",
+      "publications_size": "Publications size",
+      "index_size": "Index size",
+      "chat_history_size": "Chat history size"
+    },
+    "maintenance_section": "Maintenance",
+    "maintenance_description": "Tools to inspect and repair local data.",
+    "maintenance": {
+      "check_integrity": "Check integrity",
+      "rebuild_index": "Rebuild index",
+      "reset_index": "Reset index",
+      "clear_chat_history": "Clear chat history",
+      "integrity_ok": "No problems detected.",
+      "integrity_issues": "Problems detected:",
+      "rebuild_confirm_title": "Rebuild index",
+      "rebuild_confirm_message": "Do you want to reindex all available publications?",
+      "rebuild_success": "Index rebuilt. Processed: {processed}. Failed: {failed}.",
+      "rebuild_partial": "Partial rebuild. Processed: {processed}. Failed: {failed}.",
+      "rebuild_failed": "Index rebuild failed.",
+      "reset_confirm_title": "Reset index",
+      "reset_confirm_message": "Do you want to delete all indexed chunks without deleting imported PDF/TXT files?",
+      "reset_success": "Index reset.",
+      "reset_failed": "Index reset failed.",
+      "clear_chat_confirm_title": "Clear chat history",
+      "clear_chat_confirm_message": "Do you want to clear local chat history?",
+      "clear_chat_success": "Chat history cleared.",
+      "clear_chat_failed": "Chat history could not be cleared.",
+      "busy": "Operation in progress..."
+    },
+    "integrity": {
+      "issue": {
+        "metadata_corrupt": "Metadata file is not readable",
+        "manifest_corrupt": "Index manifest is not readable",
+        "chat_history_corrupt": "Chat history is not readable",
+        "missing_file": "Imported file is missing",
+        "missing_chunks": "Index chunks are missing",
+        "chunk_count_mismatch": "Chunk count is inconsistent",
+        "orphan_chunks": "Orphan chunk file"
+      }
+    },
+    "about_section": "About",
+    "about": {
+      "app_name": "App name",
+      "version": "Version",
+      "stage": "Stage",
+      "local_privacy": "JW PubliStudy stores data locally on the user's computer. Chat sends questions and sources only to the configured endpoint."
     }
   }
 }

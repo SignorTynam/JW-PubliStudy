@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Signal
+from pathlib import Path
+
+from PySide6.QtCore import QUrl, Signal
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -11,14 +14,18 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
 from app.i18n import I18n
-from app.services.local_llm_client import LocalLLMClient
+from app.paths import AppPaths
+from app.services.local_llm_client import LocalLLMClient, is_local_endpoint
+from app.services.maintenance_service import IntegrityReport, LibraryStats, MaintenanceResult, MaintenanceService
 from app.settings import AppSettings
+from app.version import APP_NAME, APP_STAGE, APP_VERSION
 
 
 class SettingsPage(QWidget):
@@ -30,52 +37,150 @@ class SettingsPage(QWidget):
         ("en", "settings.language_option.en"),
     )
 
-    def __init__(self, translations: I18n, settings: AppSettings, llm_client: LocalLLMClient) -> None:
+    def __init__(
+        self,
+        translations: I18n,
+        settings: AppSettings,
+        llm_client: LocalLLMClient,
+        maintenance_service: MaintenanceService,
+        paths: AppPaths,
+    ) -> None:
         super().__init__()
         self._translations = translations
         self._settings = settings
         self._llm_client = llm_client
+        self._maintenance_service = maintenance_service
+        self._paths = paths
+        self._maintenance_buttons: list[QPushButton] = []
 
         self.setObjectName("Page")
-        layout = QVBoxLayout(self)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        content = QWidget()
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(34, 34, 34, 34)
         layout.setSpacing(18)
 
         self._title = QLabel()
         self._title.setObjectName("PageTitle")
-        layout.addWidget(self._title)
-
         self._description = QLabel()
         self._description.setObjectName("SettingsDescription")
         self._description.setWordWrap(True)
+        layout.addWidget(self._title)
         layout.addWidget(self._description)
 
+        layout.addWidget(self._build_language_section())
+        layout.addWidget(self._build_ai_section())
+        layout.addWidget(self._build_data_section())
+        layout.addWidget(self._build_stats_section())
+        layout.addWidget(self._build_maintenance_section())
+        layout.addWidget(self._build_about_section())
+        layout.addStretch(1)
+
+        scroll.setWidget(content)
+        outer_layout.addWidget(scroll)
+
+        self._load_ai_settings()
+        self.update_texts()
+        self.refresh_stats()
+
+    def update_texts(self) -> None:
+        current_language = self._translations.language
+        self._title.setText(self._translations.t("settings.title"))
+        self._description.setText(self._translations.t("settings.language_description"))
+
+        self._language_section_title.setText(self._translations.t("settings.language_section"))
+        self._language_label.setText(self._translations.t("settings.language"))
+        self._language_combo.blockSignals(True)
+        self._language_combo.clear()
+        for language_code, label_key in self.LANGUAGE_OPTIONS:
+            self._language_combo.addItem(self._translations.t(label_key), language_code)
+        self._language_combo.setCurrentIndex(self._index_for_language(current_language))
+        self._language_combo.blockSignals(False)
+
+        self._ai_title.setText(self._translations.t("settings.ai_section"))
+        self._ai_description.setText(self._translations.t("settings.ai_description"))
+        self._ai_privacy.setText(self._privacy_text())
+        self._endpoint_label.setText(self._translations.t("settings.ai.endpoint"))
+        self._model_label.setText(self._translations.t("settings.ai.model"))
+        self._temperature_label.setText(self._translations.t("settings.ai.temperature"))
+        self._max_tokens_label.setText(self._translations.t("settings.ai.max_tokens"))
+        self._timeout_label.setText(self._translations.t("settings.ai.timeout"))
+        self._retrieval_limit_label.setText(self._translations.t("settings.ai.retrieval_limit"))
+        self._save_ai_button.setText(self._translations.t("settings.ai.save"))
+        self._reset_ai_button.setText(self._translations.t("settings.ai.reset_defaults"))
+        self._test_ai_button.setText(self._translations.t("settings.ai.test_connection"))
+
+        self._data_title.setText(self._translations.t("settings.data_section"))
+        self._data_description.setText(self._translations.t("settings.data_description"))
+        self._app_data_label_title.setText(self._translations.t("settings.path.app_data"))
+        self._publications_path_label_title.setText(self._translations.t("settings.path.publications"))
+        self._index_path_label_title.setText(self._translations.t("settings.path.index"))
+        self._metadata_path_label_title.setText(self._translations.t("settings.path.metadata"))
+        self._chat_history_path_label_title.setText(self._translations.t("settings.path.chat_history"))
+        self._open_app_data_button.setText(self._translations.t("settings.open_app_data"))
+        self._open_publications_button.setText(self._translations.t("settings.open_publications"))
+        self._open_index_button.setText(self._translations.t("settings.open_index"))
+
+        self._stats_title.setText(self._translations.t("settings.stats_section"))
+        self._stats_description.setText(self._translations.t("settings.stats_description"))
+        self._refresh_stats_button.setText(self._translations.t("settings.stats.refresh"))
+
+        self._maintenance_title.setText(self._translations.t("settings.maintenance_section"))
+        self._maintenance_description.setText(self._translations.t("settings.maintenance_description"))
+        self._check_integrity_button.setText(self._translations.t("settings.maintenance.check_integrity"))
+        self._rebuild_index_button.setText(self._translations.t("settings.maintenance.rebuild_index"))
+        self._reset_index_button.setText(self._translations.t("settings.maintenance.reset_index"))
+        self._clear_chat_button.setText(self._translations.t("settings.maintenance.clear_chat_history"))
+
+        self._about_title.setText(self._translations.t("settings.about_section"))
+        self._about_app_name.setText(f"{self._translations.t('settings.about.app_name')}: {APP_NAME}")
+        self._about_version.setText(f"{self._translations.t('settings.about.version')}: {APP_VERSION}")
+        self._about_stage.setText(f"{self._translations.t('settings.about.stage')}: {APP_STAGE}")
+        self._about_privacy.setText(self._translations.t("settings.about.local_privacy"))
+        self.refresh_stats()
+
+    def refresh_stats(self) -> None:
+        self._app_data_path.setText(str(self._paths.app_data_dir))
+        self._publications_path.setText(str(self._paths.publications_dir))
+        self._index_path.setText(str(self._paths.index_dir))
+        self._metadata_path.setText(str(self._paths.metadata_file))
+        self._chat_history_path.setText(str(self._paths.chat_history_file))
+        self._render_stats(self._maintenance_service.get_library_stats())
+        self._ai_privacy.setText(self._privacy_text())
+
+    def _build_language_section(self) -> QFrame:
+        section = self._section()
+        layout = QVBoxLayout(section)
+        self._language_section_title = self._section_title()
         self._language_label = QLabel()
         self._language_label.setObjectName("FieldLabel")
-        layout.addWidget(self._language_label)
-
         self._language_combo = QComboBox()
         self._language_combo.currentIndexChanged.connect(self._on_language_changed)
+        layout.addWidget(self._language_section_title)
+        layout.addWidget(self._language_label)
         layout.addWidget(self._language_combo)
+        return section
 
-        ai_section = QFrame()
-        ai_section.setObjectName("SettingsSection")
-        ai_layout = QVBoxLayout(ai_section)
-        ai_layout.setContentsMargins(18, 18, 18, 18)
-        ai_layout.setSpacing(12)
-
-        self._ai_title = QLabel()
-        self._ai_title.setObjectName("SectionTitle")
-        self._ai_description = QLabel()
-        self._ai_description.setObjectName("SectionDescription")
-        self._ai_description.setWordWrap(True)
-        ai_layout.addWidget(self._ai_title)
-        ai_layout.addWidget(self._ai_description)
-
+    def _build_ai_section(self) -> QFrame:
+        section = self._section()
+        layout = QVBoxLayout(section)
+        self._ai_title = self._section_title()
+        self._ai_description = self._section_description()
+        self._ai_privacy = QLabel()
+        self._ai_privacy.setObjectName("PrivacyWarning")
+        self._ai_privacy.setWordWrap(True)
+        layout.addWidget(self._ai_title)
+        layout.addWidget(self._ai_description)
+        layout.addWidget(self._ai_privacy)
         form = QFormLayout()
-        form.setSpacing(12)
         self._endpoint_label = QLabel()
         self._endpoint_input = QLineEdit()
+        self._endpoint_input.textChanged.connect(lambda _text: self._ai_privacy.setText(self._privacy_text()))
         self._model_label = QLabel()
         self._model_input = QLineEdit()
         self._temperature_label = QLabel()
@@ -92,59 +197,103 @@ class SettingsPage(QWidget):
         self._retrieval_limit_label = QLabel()
         self._retrieval_limit_input = QSpinBox()
         self._retrieval_limit_input.setRange(1, 12)
-
         form.addRow(self._endpoint_label, self._endpoint_input)
         form.addRow(self._model_label, self._model_input)
         form.addRow(self._temperature_label, self._temperature_input)
         form.addRow(self._max_tokens_label, self._max_tokens_input)
         form.addRow(self._timeout_label, self._timeout_input)
         form.addRow(self._retrieval_limit_label, self._retrieval_limit_input)
-        ai_layout.addLayout(form)
+        layout.addLayout(form)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        self._reset_ai_button = self._secondary_button(self._reset_ai_settings)
+        self._test_ai_button = self._secondary_button(self._test_connection)
+        self._save_ai_button = self._primary_button(self._save_ai_settings)
+        buttons.addWidget(self._reset_ai_button)
+        buttons.addWidget(self._test_ai_button)
+        buttons.addWidget(self._save_ai_button)
+        layout.addLayout(buttons)
+        return section
 
-        button_layout = QHBoxLayout()
-        button_layout.addStretch(1)
-        self._save_ai_button = QPushButton()
-        self._save_ai_button.setObjectName("PrimaryButton")
-        self._save_ai_button.clicked.connect(self._save_ai_settings)
-        self._reset_ai_button = QPushButton()
-        self._reset_ai_button.setObjectName("SecondaryButton")
-        self._reset_ai_button.clicked.connect(self._reset_ai_settings)
-        self._test_ai_button = QPushButton()
-        self._test_ai_button.setObjectName("SecondaryButton")
-        self._test_ai_button.clicked.connect(self._test_connection)
-        button_layout.addWidget(self._reset_ai_button)
-        button_layout.addWidget(self._test_ai_button)
-        button_layout.addWidget(self._save_ai_button)
-        ai_layout.addLayout(button_layout)
-        layout.addWidget(ai_section)
-        layout.addStretch(1)
+    def _build_data_section(self) -> QFrame:
+        section = self._section()
+        layout = QVBoxLayout(section)
+        self._data_title = self._section_title()
+        self._data_description = self._section_description()
+        layout.addWidget(self._data_title)
+        layout.addWidget(self._data_description)
+        self._app_data_label_title, self._app_data_path = self._path_row(layout)
+        self._publications_path_label_title, self._publications_path = self._path_row(layout)
+        self._index_path_label_title, self._index_path = self._path_row(layout)
+        self._metadata_path_label_title, self._metadata_path = self._path_row(layout)
+        self._chat_history_path_label_title, self._chat_history_path = self._path_row(layout)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        self._open_app_data_button = self._secondary_button(lambda: self._open_path(self._paths.app_data_dir))
+        self._open_publications_button = self._secondary_button(lambda: self._open_path(self._paths.publications_dir))
+        self._open_index_button = self._secondary_button(lambda: self._open_path(self._paths.index_dir))
+        buttons.addWidget(self._open_app_data_button)
+        buttons.addWidget(self._open_publications_button)
+        buttons.addWidget(self._open_index_button)
+        layout.addLayout(buttons)
+        return section
 
-        self._load_ai_settings()
-        self.update_texts()
+    def _build_stats_section(self) -> QFrame:
+        section = self._section()
+        layout = QVBoxLayout(section)
+        self._stats_title = self._section_title()
+        self._stats_description = self._section_description()
+        self._stats_text = QLabel()
+        self._stats_text.setObjectName("DetailMeta")
+        self._stats_text.setWordWrap(True)
+        self._refresh_stats_button = self._secondary_button(self.refresh_stats)
+        layout.addWidget(self._stats_title)
+        layout.addWidget(self._stats_description)
+        layout.addWidget(self._stats_text)
+        layout.addWidget(self._refresh_stats_button)
+        return section
 
-    def update_texts(self) -> None:
-        current_language = self._translations.language
-        self._title.setText(self._translations.t("settings.title"))
-        self._description.setText(self._translations.t("settings.language_description"))
-        self._language_label.setText(self._translations.t("settings.language"))
-        self._ai_title.setText(self._translations.t("settings.ai_section"))
-        self._ai_description.setText(self._translations.t("settings.ai_description"))
-        self._endpoint_label.setText(self._translations.t("settings.ai.endpoint"))
-        self._model_label.setText(self._translations.t("settings.ai.model"))
-        self._temperature_label.setText(self._translations.t("settings.ai.temperature"))
-        self._max_tokens_label.setText(self._translations.t("settings.ai.max_tokens"))
-        self._timeout_label.setText(self._translations.t("settings.ai.timeout"))
-        self._retrieval_limit_label.setText(self._translations.t("settings.ai.retrieval_limit"))
-        self._save_ai_button.setText(self._translations.t("settings.ai.save"))
-        self._reset_ai_button.setText(self._translations.t("settings.ai.reset_defaults"))
-        self._test_ai_button.setText(self._translations.t("settings.ai.test_connection"))
+    def _build_maintenance_section(self) -> QFrame:
+        section = self._section()
+        layout = QVBoxLayout(section)
+        self._maintenance_title = self._section_title()
+        self._maintenance_description = self._section_description()
+        self._maintenance_report = QLabel()
+        self._maintenance_report.setObjectName("MaintenanceReport")
+        self._maintenance_report.setWordWrap(True)
+        buttons = QHBoxLayout()
+        self._check_integrity_button = self._secondary_button(self._check_integrity)
+        self._rebuild_index_button = self._secondary_button(self._rebuild_index)
+        self._reset_index_button = self._danger_button(self._reset_index)
+        self._clear_chat_button = self._danger_button(self._clear_chat_history)
+        self._maintenance_buttons = [
+            self._check_integrity_button,
+            self._rebuild_index_button,
+            self._reset_index_button,
+            self._clear_chat_button,
+        ]
+        for button in self._maintenance_buttons:
+            buttons.addWidget(button)
+        layout.addWidget(self._maintenance_title)
+        layout.addWidget(self._maintenance_description)
+        layout.addLayout(buttons)
+        layout.addWidget(self._maintenance_report)
+        return section
 
-        self._language_combo.blockSignals(True)
-        self._language_combo.clear()
-        for language_code, label_key in self.LANGUAGE_OPTIONS:
-            self._language_combo.addItem(self._translations.t(label_key), language_code)
-        self._language_combo.setCurrentIndex(self._index_for_language(current_language))
-        self._language_combo.blockSignals(False)
+    def _build_about_section(self) -> QFrame:
+        section = self._section()
+        layout = QVBoxLayout(section)
+        self._about_title = self._section_title()
+        self._about_app_name = QLabel()
+        self._about_version = QLabel()
+        self._about_stage = QLabel()
+        self._about_privacy = self._section_description()
+        layout.addWidget(self._about_title)
+        layout.addWidget(self._about_app_name)
+        layout.addWidget(self._about_version)
+        layout.addWidget(self._about_stage)
+        layout.addWidget(self._about_privacy)
+        return section
 
     def _load_ai_settings(self) -> None:
         self._endpoint_input.setText(self._settings.llm_endpoint_url())
@@ -174,17 +323,154 @@ class SettingsPage(QWidget):
     def _test_connection(self) -> None:
         self._persist_ai_settings()
         ok = self._llm_client.test_connection(self._settings.llm_config())
+        self._show_message("common.success" if ok else "common.error", "settings.ai.connection_success" if ok else "settings.ai.connection_failed")
+
+    def _check_integrity(self) -> None:
+        report = self._maintenance_service.check_integrity()
+        self._maintenance_report.setText(self._format_integrity_report(report))
+
+    def _rebuild_index(self) -> None:
+        if not self._confirm("settings.maintenance.rebuild_confirm_title", "settings.maintenance.rebuild_confirm_message"):
+            return
+        self._set_maintenance_busy(True)
+        result = self._maintenance_service.rebuild_index()
+        self._set_maintenance_busy(False)
+        self.refresh_stats()
+        self._show_maintenance_result(result, "settings.maintenance.rebuild_success", "settings.maintenance.rebuild_partial", "settings.maintenance.rebuild_failed")
+
+    def _reset_index(self) -> None:
+        if not self._confirm("settings.maintenance.reset_confirm_title", "settings.maintenance.reset_confirm_message"):
+            return
+        result = self._maintenance_service.reset_index()
+        self.refresh_stats()
+        self._show_message("common.success" if result.success else "common.error", "settings.maintenance.reset_success" if result.success else "settings.maintenance.reset_failed")
+
+    def _clear_chat_history(self) -> None:
+        if not self._confirm("settings.maintenance.clear_chat_confirm_title", "settings.maintenance.clear_chat_confirm_message"):
+            return
+        result = self._maintenance_service.clear_chat_history()
+        self.refresh_stats()
         self._show_message(
-            "common.success" if ok else "common.error",
-            "settings.ai.connection_success" if ok else "settings.ai.connection_failed",
+            "common.success" if result.success else "common.error",
+            "settings.maintenance.clear_chat_success" if result.success else "settings.maintenance.clear_chat_failed",
         )
 
-    def _show_message(self, title_key: str, message_key: str) -> None:
+    def _format_integrity_report(self, report: IntegrityReport) -> str:
+        if report.ok:
+            return self._translations.t("settings.maintenance.integrity_ok")
+        lines = [self._translations.t("settings.maintenance.integrity_issues")]
+        for issue in report.issues[:12]:
+            key = f"settings.integrity.issue.{issue.code}"
+            label = self._translations.t(key)
+            if issue.publication_title:
+                label = f"{label}: {issue.publication_title}"
+            lines.append(f"- {label}")
+        return "\n".join(lines)
+
+    def _show_maintenance_result(self, result: MaintenanceResult, success_key: str, partial_key: str, failed_key: str) -> None:
+        if result.success:
+            key = success_key
+        elif result.processed_count:
+            key = partial_key
+        else:
+            key = failed_key
+        self._show_message("common.success" if result.success else "common.warning", key, processed=result.processed_count, failed=result.failed_count)
+
+    def _render_stats(self, stats: LibraryStats) -> None:
+        lines = [
+            f"{self._translations.t('settings.stats.total_publications')}: {stats.total_publications}",
+            f"{self._translations.t('settings.stats.imported_publications')}: {stats.imported_publications}",
+            f"{self._translations.t('settings.stats.indexed_publications')}: {stats.indexed_publications}",
+            f"{self._translations.t('settings.stats.error_publications')}: {stats.error_publications}",
+            f"{self._translations.t('settings.stats.pending_publications')}: {stats.pending_publications}",
+            f"{self._translations.t('settings.stats.total_chunks')}: {stats.total_chunks}",
+            f"{self._translations.t('settings.stats.publications_size')}: {self._format_bytes(stats.publications_size_bytes)}",
+            f"{self._translations.t('settings.stats.index_size')}: {self._format_bytes(stats.index_size_bytes)}",
+            f"{self._translations.t('settings.stats.chat_history_size')}: {self._format_bytes(stats.chat_history_size_bytes)}",
+        ]
+        self._stats_text.setText("\n".join(lines))
+
+    def _privacy_text(self) -> str:
+        endpoint = self._endpoint_input.text() if hasattr(self, "_endpoint_input") else self._settings.llm_endpoint_url()
+        return self._translations.t("settings.ai_privacy_local" if is_local_endpoint(endpoint) else "settings.ai_privacy_remote_warning")
+
+    def _format_bytes(self, size: int) -> str:
+        if size < 1024:
+            return f"{size} B"
+        if size < 1024 * 1024:
+            return f"{size / 1024:.1f} KB"
+        return f"{size / (1024 * 1024):.1f} MB"
+
+    def _path_row(self, layout: QVBoxLayout) -> tuple[QLabel, QLabel]:
+        title = QLabel()
+        title.setObjectName("FieldLabel")
+        value = QLabel()
+        value.setObjectName("PathLabel")
+        value.setWordWrap(True)
+        layout.addWidget(title)
+        layout.addWidget(value)
+        return title, value
+
+    def _section(self) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("SettingsSection")
+        return frame
+
+    def _section_title(self) -> QLabel:
+        label = QLabel()
+        label.setObjectName("SectionTitle")
+        return label
+
+    def _section_description(self) -> QLabel:
+        label = QLabel()
+        label.setObjectName("SectionDescription")
+        label.setWordWrap(True)
+        return label
+
+    def _primary_button(self, slot) -> QPushButton:
+        button = QPushButton()
+        button.setObjectName("PrimaryButton")
+        button.clicked.connect(slot)
+        return button
+
+    def _secondary_button(self, slot) -> QPushButton:
+        button = QPushButton()
+        button.setObjectName("SecondaryButton")
+        button.clicked.connect(slot)
+        return button
+
+    def _danger_button(self, slot) -> QPushButton:
+        button = QPushButton()
+        button.setObjectName("DangerButton")
+        button.clicked.connect(slot)
+        return button
+
+    def _open_path(self, path: Path) -> None:
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+
+    def _confirm(self, title_key: str, message_key: str) -> bool:
         dialog = QMessageBox(self)
+        dialog.setIcon(QMessageBox.Icon.Warning)
         dialog.setWindowTitle(self._translations.t(title_key))
         dialog.setText(self._translations.t(message_key))
+        no_button = dialog.addButton(self._translations.t("common.no"), QMessageBox.ButtonRole.RejectRole)
+        yes_button = dialog.addButton(self._translations.t("common.yes"), QMessageBox.ButtonRole.AcceptRole)
+        dialog.setDefaultButton(no_button)
+        dialog.exec()
+        return dialog.clickedButton() == yes_button
+
+    def _show_message(self, title_key: str, message_key: str, **values: object) -> None:
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle(self._translations.t(title_key))
+        dialog.setText(self._translations.t(message_key).format(**values))
         dialog.addButton(self._translations.t("common.ok"), QMessageBox.ButtonRole.AcceptRole)
         dialog.exec()
+
+    def _set_maintenance_busy(self, is_busy: bool) -> None:
+        for button in self._maintenance_buttons:
+            button.setEnabled(not is_busy)
+        if is_busy:
+            self._maintenance_report.setText(self._translations.t("settings.maintenance.busy"))
 
     def _on_language_changed(self, index: int) -> None:
         language = self._language_combo.itemData(index)

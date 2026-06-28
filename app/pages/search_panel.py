@@ -65,8 +65,12 @@ class SearchPanel(QWidget):
         self._description = QLabel()
         self._description.setObjectName("PageSubtitle")
         self._description.setWordWrap(True)
+        self._notice = QLabel()
+        self._notice.setObjectName("DetailMeta")
+        self._notice.setWordWrap(True)
         title_area.addWidget(self._title)
         title_area.addWidget(self._description)
+        title_area.addWidget(self._notice)
         header_layout.addLayout(title_area, 1)
 
         self._refresh_button = QPushButton()
@@ -86,7 +90,11 @@ class SearchPanel(QWidget):
         self._search_button = QPushButton()
         self._search_button.setObjectName("SearchButton")
         self._search_button.clicked.connect(self._execute_search)
+        self._clear_button = QPushButton()
+        self._clear_button.setObjectName("SecondaryButton")
+        self._clear_button.clicked.connect(self._clear_search)
         search_layout.addWidget(self._search_input, 1)
+        search_layout.addWidget(self._clear_button)
         search_layout.addWidget(self._search_button)
         layout.addWidget(search_frame)
 
@@ -184,9 +192,11 @@ class SearchPanel(QWidget):
 
         self._title.setText(self._translations.t("study.title"))
         self._description.setText(self._translations.t("study.description"))
+        self._notice.setText(self._translations.t("study.search.textual_notice"))
         self._refresh_button.setText(self._translations.t("study.refresh_sources"))
         self._search_input.setPlaceholderText(self._translations.t("study.search.placeholder"))
         self._search_button.setText(self._translations.t("study.search.button"))
+        self._clear_button.setText(self._translations.t("study.search.clear_button"))
         self._language_filter_label.setText(self._translations.t("study.filters.language"))
         self._publication_filter_label.setText(self._translations.t("study.filters.publication"))
         self._limit_filter_label.setText(self._translations.t("study.filters.limit"))
@@ -228,6 +238,12 @@ class SearchPanel(QWidget):
     def _execute_search_if_query(self) -> None:
         if self._search_input.text().strip():
             self._execute_search()
+
+    def _clear_search(self) -> None:
+        self._search_input.clear()
+        self._results = []
+        self._refresh_results_table()
+        self._set_status("study.results.empty_query")
 
     def _execute_search(self) -> None:
         self.refresh_sources()

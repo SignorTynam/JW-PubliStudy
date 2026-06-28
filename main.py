@@ -9,12 +9,13 @@ from app.i18n import I18n
 from app.main_window import MainWindow
 from app.settings import AppSettings
 from app.theme import apply_theme
+from app.version import APP_NAME
 
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName("JW PubliStudy")
-    app.setOrganizationName("JW PubliStudy")
+    app.setApplicationName(APP_NAME)
+    app.setOrganizationName(APP_NAME)
 
     project_root = Path(__file__).resolve().parent
     settings = AppSettings()

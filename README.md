@@ -1,8 +1,17 @@
 # JW PubliStudy
 
-JW PubliStudy e una applicazione desktop locale pensata per aiutare lo studio di pubblicazioni caricate personalmente.
+JW PubliStudy e una desktop app locale per studiare pubblicazioni personali in formato PDF/TXT.
 
-Le prime fasi costruiscono una base locale e navigabile per la libreria di pubblicazioni. L'app non include ancora AI, RAG, lettura del contenuto dei documenti, indicizzazione o ricerca semantica.
+L'app permette di:
+
+- importare pubblicazioni personali PDF/TXT;
+- estrarre testo da TXT e PDF testuali;
+- indicizzare localmente i contenuti in blocchi JSONL;
+- cercare nelle fonti indicizzate;
+- usare una chat AI locale collegata a un endpoint compatibile OpenAI Chat Completions;
+- mostrare fonti, riferimenti e citazioni usate nelle risposte.
+
+Il progetto non usa cloud di default, non scarica modelli, non include OCR, non implementa embeddings, non usa ricerca vettoriale e non fa scraping da siti esterni.
 
 ## Requisiti
 
@@ -22,7 +31,14 @@ pip install -r requirements.txt
 python main.py
 ```
 
-## Contenuto della fase 1
+Su Windows sono disponibili anche:
+
+```bat
+scripts\run_windows.bat
+scripts\dev_setup_windows.bat
+```
+
+## Fase 1 - Base app
 
 - Finestra principale PySide6
 - Sidebar laterale con navigazione
@@ -31,7 +47,6 @@ python main.py
 - Lingue iniziali: Italiano, Albanese e Inglese
 - Salvataggio locale della lingua selezionata
 - Tema grafico base moderno e pulito
-- Struttura modulare pronta per estensioni future
 
 ## Fase 2 - Gestione pubblicazioni
 
@@ -44,8 +59,6 @@ python main.py
 - Rinomina del titolo visualizzato
 - Eliminazione di pubblicazioni e dei file copiati localmente
 
-La fase 2 non legge ancora il contenuto dei documenti, non estrae testo dai PDF, non esegue OCR, non crea chunk, non calcola embeddings e non indicizza i file.
-
 ## Fase 3 - Estrazione testo e indicizzazione locale
 
 - Estrazione testo da file TXT locali
@@ -55,9 +68,6 @@ La fase 2 non legge ancora il contenuto dei documenti, non estrae testo dai PDF,
 - Creazione di blocchi di testo locali con riferimenti pagina approssimativi per i PDF
 - Salvataggio dei blocchi in file JSONL nella directory dati locale dell'app
 - Aggiornamento dello stato della pubblicazione: importata, in indicizzazione, indicizzata o errore
-- Preparazione per la fase 4, dedicata alla ricerca locale nelle fonti
-
-La fase 3 non implementa AI, embeddings, chat, RAG, ricerca semantica o citazioni generate automaticamente.
 
 ## Fase 4 - Ricerca locale nelle fonti
 
@@ -69,22 +79,36 @@ La fase 3 non implementa AI, embeddings, chat, RAG, ricerca semantica o citazion
 - Copia del testo completo del chunk
 - Copia del riferimento della fonte
 
-La fase 4 non implementa AI, embeddings, ricerca vettoriale, RAG, chat con modello locale o generazione di risposte.
+La fase 4 non implementa AI, embeddings, ricerca vettoriale, RAG o generazione di risposte.
 
 ## Fase 5 - Chat AI locale con fonti
 
 - Usa le pubblicazioni gia indicizzate come fonti
 - Recupera i chunk piu rilevanti tramite `SearchService`
-- Invia domanda e fonti a un endpoint locale compatibile OpenAI Chat Completions
+- Invia domanda e fonti a un endpoint compatibile OpenAI Chat Completions
 - Mostra risposta e fonti usate sotto la risposta
 - Salva la cronologia chat localmente
 - Permette di copiare ultima risposta e riferimenti/fonti
 
-La fase 5 non scarica modelli, non usa cloud di default, non fa scraping, non implementa embeddings e non implementa ricerca vettoriale.
+La fase 5 non scarica modelli, non usa cloud di default, non implementa embeddings e non implementa ricerca vettoriale.
+
+## Fase 6 - Rifinitura MVP e manutenzione
+
+- Versione app centralizzata in `app/version.py`
+- Impostazioni riorganizzate in sezioni: lingua, modello AI locale, dati locali, statistiche, manutenzione e informazioni app
+- Percorsi dati visibili e apribili dall'interfaccia
+- Statistiche libreria: pubblicazioni, stati, chunk e dimensione dati
+- Controllo integrita di metadati, file importati, indice, manifest e cronologia chat
+- Ricostruzione indice per tutte le pubblicazioni disponibili
+- Reset indice senza eliminare PDF/TXT importati
+- Cancellazione cronologia chat locale
+- Warning privacy se viene configurato un endpoint non locale
+- Migliorie UX in Pubblicazioni, Ricerca e Chat
+- Script Windows semplici per avvio e setup sviluppo
 
 ## Configurazione modello locale
 
-Per usare la chat bisogna avviare un server locale compatibile con OpenAI Chat Completions, per esempio LM Studio o un server locale equivalente.
+Per usare la chat bisogna avviare un server compatibile OpenAI Chat Completions, per esempio LM Studio o un server locale equivalente.
 
 Valori predefiniti:
 
@@ -93,17 +117,58 @@ Valori predefiniti:
 
 Endpoint, modello, temperature, max tokens, timeout e numero di fonti si possono modificare nella pagina Impostazioni.
 
-L'app invia domanda e fonti solo all'endpoint configurato. L'endpoint predefinito e locale (`localhost`). Se l'utente inserisce un endpoint remoto, la responsabilita del trattamento dei dati e dell'utente.
+## Dati locali
+
+JW PubliStudy salva i dati nella directory applicativa dell'utente ottenuta tramite `QStandardPaths.AppDataLocation`, fuori dalla repository Git.
+
+Dati principali:
+
+- `publications.json`: metadati delle pubblicazioni importate
+- `publications/`: copie locali dei file PDF/TXT importati
+- `index/chunks/`: chunk indicizzati in formato JSONL
+- `index/index_manifest.json`: manifest opzionale dell'indice
+- `chat_history.json`: cronologia chat locale
+- QSettings: preferenze come lingua e configurazione modello locale
+
+## Privacy
+
+- I file importati, l'indice e la cronologia restano sul computer dell'utente.
+- L'app non invia dati online automaticamente.
+- L'endpoint predefinito e `localhost`.
+- Domanda e fonti vengono inviate solo all'endpoint configurato.
+- Se l'utente configura un endpoint remoto, il trattamento dei dati diventa responsabilita dell'utente.
+- L'app non richiede API key e non salva API key.
+- Nessun modello AI viene scaricato automaticamente.
+
+## Test manuale consigliato
+
+1. Avvia l'app.
+2. Cambia lingua.
+3. Importa un TXT.
+4. Importa un PDF testuale.
+5. Indicizza le pubblicazioni.
+6. Cerca nella tab Ricerca.
+7. Copia un riferimento.
+8. Configura un modello locale.
+9. Testa la connessione.
+10. Fai una domanda nella chat.
+11. Copia la risposta con fonti.
+12. Controlla l'integrita.
+13. Resetta l'indice.
+14. Reindicizza.
+15. Cancella la cronologia chat.
 
 ## Limiti attuali
 
-- Le risposte dipendono dalla qualita delle fonti indicizzate
-- Se il modello locale non e avviato, la chat non genera risposte
-- La ricerca delle fonti e ancora testuale, non semantica
-- Nessun OCR
-- Nessun cloud usato di default
-- Nessun download automatico di modelli
+- Le risposte dipendono dalla qualita delle fonti indicizzate.
+- Se il modello locale non e avviato, la chat mostra un errore e non genera risposte.
+- La ricerca delle fonti e testuale, non semantica.
+- Nessun OCR: i PDF scannerizzati senza testo potrebbero non essere indicizzabili.
+- Nessun cloud usato di default.
+- Nessun download automatico di modelli.
 
-## Fasi successive
+## Packaging futuro
 
-Nelle fasi successive potranno essere aggiunti miglioramenti alla qualita del retrieval, ricerca semantica opzionale, embeddings locali e funzioni avanzate di studio.
+Per ora l'app si avvia da sorgente con Python.
+
+In futuro potra essere creato un installer Windows. I modelli AI non devono essere inclusi nella repository e non devono essere scaricati automaticamente dall'app.

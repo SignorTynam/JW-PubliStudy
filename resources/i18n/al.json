@@ -1,6 +1,8 @@
 {
   "app": {
-    "title": "JW PubliStudy"
+    "title": "JW PubliStudy",
+    "version": "0.1.0",
+    "stage": "MVP"
   },
   "common": {
     "ok": "OK",
@@ -11,7 +13,11 @@
     "confirm": "Konfirmo",
     "error": "Gabim",
     "success": "Veprimi u krye",
-    "copy": "Kopjo"
+    "copy": "Kopjo",
+    "open": "Hap",
+    "refresh": "Rifresko",
+    "processing": "Duke punuar...",
+    "warning": "Kujdes"
   },
   "nav": {
     "home": "Kreu",
@@ -42,10 +48,12 @@
     "description": "Importo dhe menaxho botime lokale ne format PDF ose TXT. Ne kete faze ruhen vetem skedaret dhe metadhenat.",
     "import_button": "Importo botim",
     "index_button": "Indekso",
+    "reindex_button": "Riindekso",
     "index_all_button": "Indekso te gjitha",
     "rename_button": "Riemerto",
     "delete_button": "Fshi",
-    "empty": "Nuk ka botime te importuara. Importo nje skedar PDF ose TXT per te filluar.",
+    "empty": "Importo nje skedar PDF ose TXT per te filluar.",
+    "empty_filtered": "Asnje botim nuk perputhet me filtrat e zgjedhur.",
     "file_dialog": {
       "title": "Zgjidh botim",
       "filter": "Botime (*.pdf *.txt)"
@@ -73,6 +81,9 @@
       "pending_indexing": "Ne pritje",
       "indexed": "Indeksuar",
       "error": "Gabim"
+    },
+    "status_tooltip": {
+      "error": "Gabim indeksimi: {error}"
     },
     "table": {
       "title": "Titulli",
@@ -147,7 +158,9 @@
     "description": "Kerko ne burimet e indeksuara te bibliotekes lokale. Ne kete faze kerkimi eshte tekstual dhe nuk perdor AI.",
     "search": {
       "placeholder": "Kerko ne botimet e indeksuara...",
-      "button": "Kerko"
+      "button": "Kerko",
+      "clear_button": "Pastro kerkimin",
+      "textual_notice": "Kerkimi eshte tekstual, jo semantik."
     },
     "refresh_sources": "Rifresko burimet",
     "filters": {
@@ -189,9 +202,9 @@
       "copied_reference": "Referenca u kopjua ne clipboard."
     },
     "reference": {
-      "page": "{title} - faqja {page}",
-      "pages": "{title} - faqet {page_start}-{page_end}",
-      "chunk": "{title} - blloku {chunk}"
+      "page": "{title} — faqja {page}",
+      "pages": "{title} — faqet {page_start}-{page_end}",
+      "chunk": "{title} — blloku {chunk}"
     },
     "page": {
       "none": "N/A"
@@ -209,19 +222,25 @@
     },
     "send": "Dergo",
     "clear": "Pastro chat",
-    "copy_last_answer": "Kopjo pergjigjen e fundit",
-    "empty": "Historia e chat-it eshte bosh. Shkruaj nje pyetje per te filluar.",
+      "copy_last_answer": "Kopjo pergjigjen e fundit",
+      "copy_last_answer_with_sources": "Kopjo pergjigjen me burime",
+      "empty": "Historia e chat-it eshte bosh. Shkruaj nje pyetje per te filluar.",
+      "initial_hint": "Bej nje pyetje per botimet e indeksuara.",
     "user_label": "Ti",
     "assistant_label": "Asistenti",
     "sources_title": "Burime te perdorura",
     "no_sources": "Nuk u perdor asnje burim.",
-    "insufficient_sources": "Nuk ka informacion te mjaftueshem ne botimet e indeksuara per te dhene pergjigje.",
+      "insufficient_sources": "Nuk ka informacion te mjaftueshem ne botimet e indeksuara per te dhene pergjigje.",
+      "insufficient_sources_suggestion": "Provo te indeksosh me shume botime ose riformulo pyetjen.",
     "local_model_error": "Nuk mund te kontaktoj modelin AI lokal. Kontrollo qe serveri lokal eshte nisur dhe endpoint/modeli jane te sakta.",
     "busy": "Pergjigjja po gjenerohet...",
-    "answer_copied": "Pergjigjja e fundit u kopjua ne clipboard.",
+      "answer_copied": "Pergjigjja e fundit u kopjua ne clipboard.",
+      "answer_copied_with_sources": "Pergjigjja e fundit me burime u kopjua ne clipboard.",
     "history_cleared": "Historia e chat-it u fshi.",
     "confirm_clear_title": "Pastro chat",
-    "confirm_clear_message": "Deshiron te fshish historine lokale te chat-it?",
+      "confirm_clear_message": "Deshiron te fshish historine lokale te chat-it?",
+      "remote_endpoint_warning": "Po perdor nje endpoint jo lokal. Pyetjet dhe burimet mund te dalin nga kompjuteri.",
+      "shortcut_hint": "Ctrl+Enter dergon pyetjen.",
     "filters": {
       "language": "Gjuha",
       "publication": "Botimi",
@@ -248,6 +267,7 @@
   "settings": {
     "title": "Cilesimet",
     "language": "Gjuha",
+    "language_section": "Gjuha",
     "language_description": "Zgjidh gjuhen e nderfaqes. Preferenca ruhet lokalisht dhe zbatohet ne hapjen e ardhshme.",
     "language_option": {
       "it": "Italiano",
@@ -256,6 +276,8 @@
     },
     "ai_section": "Model AI lokal",
     "ai_description": "Konfiguro nje server lokal te perputhshem me OpenAI Chat Completions. Aplikacioni nuk shkarkon modele dhe nuk perdor cloud si parazgjedhje.",
+    "ai_privacy_local": "Endpoint i konfiguruar eshte lokal.",
+    "ai_privacy_remote_warning": "Po perdor nje endpoint jo lokal. Pyetjet dhe burimet mund te dergohen jashte kompjuterit.",
     "ai": {
       "endpoint": "Endpoint URL",
       "model": "Emri i modelit",
@@ -271,6 +293,74 @@
       "invalid_values": "Kontrollo vlerat e futura.",
       "connection_success": "Lidhja me modelin lokal pati sukses.",
       "connection_failed": "Lidhja me modelin lokal deshtoi."
+    },
+    "data_section": "Te dhena lokale",
+    "data_description": "Shtigjet qe perdor aplikacioni per botime, indeks dhe histori chat.",
+    "path": {
+      "app_data": "Direktoria e te dhenave",
+      "publications": "Direktoria e botimeve",
+      "index": "Direktoria e indeksit",
+      "metadata": "Skedari i metadhenave",
+      "chat_history": "Skedari i historise chat"
+    },
+    "open_app_data": "Hap dosjen e te dhenave",
+    "open_publications": "Hap dosjen e botimeve",
+    "open_index": "Hap dosjen e indeksit",
+    "stats_section": "Statistika",
+    "stats_description": "Permbledhje e bibliotekes lokale.",
+    "stats": {
+      "refresh": "Rifresko statistikat",
+      "total_publications": "Botime gjithsej",
+      "imported_publications": "Te importuara",
+      "indexed_publications": "Te indeksuara",
+      "error_publications": "Me gabim",
+      "pending_publications": "Ne pritje",
+      "total_chunks": "Blloqe gjithsej",
+      "publications_size": "Madhesia e botimeve",
+      "index_size": "Madhesia e indeksit",
+      "chat_history_size": "Madhesia e historise chat"
+    },
+    "maintenance_section": "Mirembajtje",
+    "maintenance_description": "Mjete per te kontrolluar dhe riparuar te dhenat lokale.",
+    "maintenance": {
+      "check_integrity": "Kontrollo integritetin",
+      "rebuild_index": "Rinderto indeksin",
+      "reset_index": "Reseto indeksin",
+      "clear_chat_history": "Fshi historine chat",
+      "integrity_ok": "Nuk u gjet asnje problem.",
+      "integrity_issues": "Probleme te gjetura:",
+      "rebuild_confirm_title": "Rinderto indeksin",
+      "rebuild_confirm_message": "Deshiron te riindeksosh te gjitha botimet e disponueshme?",
+      "rebuild_success": "Indeksi u rindertua. Te procesuara: {processed}. Deshtuan: {failed}.",
+      "rebuild_partial": "Rindertim i pjesshem. Te procesuara: {processed}. Deshtuan: {failed}.",
+      "rebuild_failed": "Rindertimi i indeksit deshtoi.",
+      "reset_confirm_title": "Reseto indeksin",
+      "reset_confirm_message": "Deshiron te fshish te gjitha blloqet e indeksuara pa fshire PDF/TXT te importuara?",
+      "reset_success": "Indeksi u resetua.",
+      "reset_failed": "Resetimi i indeksit deshtoi.",
+      "clear_chat_confirm_title": "Fshi historine chat",
+      "clear_chat_confirm_message": "Deshiron te fshish historine lokale te chat-it?",
+      "clear_chat_success": "Historia e chat-it u fshi.",
+      "clear_chat_failed": "Nuk ishte e mundur te fshihej historia e chat-it.",
+      "busy": "Veprimi eshte ne proces..."
+    },
+    "integrity": {
+      "issue": {
+        "metadata_corrupt": "Skedari i metadhenave nuk lexohet",
+        "manifest_corrupt": "Manifesti i indeksit nuk lexohet",
+        "chat_history_corrupt": "Historia chat nuk lexohet",
+        "missing_file": "Skedari i importuar mungon",
+        "missing_chunks": "Blloqet e indeksit mungojne",
+        "chunk_count_mismatch": "Numri i blloqeve nuk eshte koherent",
+        "orphan_chunks": "Skedar blloqesh jetim"
+      }
+    },
+    "about_section": "Rreth aplikacionit",
+    "about": {
+      "app_name": "Emri i aplikacionit",
+      "version": "Versioni",
+      "stage": "Faza",
+      "local_privacy": "JW PubliStudy i ruan te dhenat lokalisht ne kompjuterin e perdoruesit. Chat-i dergon pyetje dhe burime vetem te endpoint i konfiguruar."
     }
   }
 }

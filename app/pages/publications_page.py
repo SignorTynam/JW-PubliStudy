@@ -339,7 +339,7 @@ class PublicationsPage(QWidget):
             return
 
         try:
-            self._repository.add_publication(
+            publication = self._repository.add_publication(
                 source_path=source_path,
                 language=dialog.language,
                 title=dialog.publication_title,
@@ -354,8 +354,11 @@ class PublicationsPage(QWidget):
             self._show_error("publications.error.import_failed")
             return
 
-        self._refresh_table()
+        self._refresh_table(publication.id)
         self._show_info("publications.success.imported")
+
+    def refresh_publications(self) -> None:
+        self._refresh_table(self._selected_publication_id)
 
     def _rename_selected_publication(self) -> None:
         publication = self._selected_publication()
@@ -515,6 +518,12 @@ class PublicationsPage(QWidget):
         for column, value in enumerate(values):
             item = QTableWidgetItem(value)
             item.setData(Qt.ItemDataRole.UserRole, publication.id)
+            if column == 4 and publication.status == "error" and publication.error_message:
+                item.setToolTip(
+                    self._translations.t("publications.status_tooltip.error").format(
+                        error=publication.error_message
+                    )
+                )
             self._table.setItem(row, column, item)
 
     def _filtered_publications(self) -> list[Publication]:
@@ -545,6 +554,11 @@ class PublicationsPage(QWidget):
                 self._selected_publication_id = publication_id
 
         has_selection = self._selected_publication_id is not None
+        publication = self._selected_publication()
+        if publication is not None and publication.status == "indexed":
+            self._index_button.setText(self._translations.t("publications.reindex_button"))
+        else:
+            self._index_button.setText(self._translations.t("publications.index_button"))
         self._index_button.setEnabled(has_selection and not self._is_busy)
         self._rename_button.setEnabled(has_selection and not self._is_busy)
         self._delete_button.setEnabled(has_selection and not self._is_busy)
@@ -560,8 +574,13 @@ class PublicationsPage(QWidget):
 
     def _update_empty_state(self) -> None:
         has_publications = bool(self._repository.list_publications())
-        self._empty_state.setVisible(not has_publications)
-        self._table.setVisible(has_publications)
+        has_visible_publications = self._table.rowCount() > 0
+        self._empty_state.setVisible(not has_visible_publications)
+        self._table.setVisible(has_visible_publications)
+        if not has_publications:
+            self._empty_state.setText(self._translations.t("publications.empty"))
+        elif not has_visible_publications:
+            self._empty_state.setText(self._translations.t("publications.empty_filtered"))
 
     def _format_size(self, size: int) -> str:
         if size < 1024:

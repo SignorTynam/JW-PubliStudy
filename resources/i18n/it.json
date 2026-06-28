@@ -1,6 +1,8 @@
 {
   "app": {
-    "title": "JW PubliStudy"
+    "title": "JW PubliStudy",
+    "version": "0.1.0",
+    "stage": "MVP"
   },
   "common": {
     "ok": "OK",
@@ -11,7 +13,11 @@
     "confirm": "Conferma",
     "error": "Errore",
     "success": "Operazione completata",
-    "copy": "Copia"
+    "copy": "Copia",
+    "open": "Apri",
+    "refresh": "Aggiorna",
+    "processing": "Elaborazione...",
+    "warning": "Attenzione"
   },
   "nav": {
     "home": "Home",
@@ -42,10 +48,12 @@
     "description": "Importa e gestisci pubblicazioni locali in formato PDF o TXT. In questa fase vengono salvati solo file e metadati.",
     "import_button": "Importa pubblicazione",
     "index_button": "Indicizza",
+    "reindex_button": "Reindicizza",
     "index_all_button": "Indicizza tutte",
     "rename_button": "Rinomina",
     "delete_button": "Elimina",
-    "empty": "Nessuna pubblicazione importata. Importa un file PDF o TXT per iniziare.",
+    "empty": "Importa un PDF o TXT per iniziare.",
+    "empty_filtered": "Nessuna pubblicazione corrisponde ai filtri selezionati.",
     "file_dialog": {
       "title": "Seleziona pubblicazione",
       "filter": "Pubblicazioni (*.pdf *.txt)"
@@ -73,6 +81,9 @@
       "pending_indexing": "In attesa",
       "indexed": "Indicizzata",
       "error": "Errore"
+    },
+    "status_tooltip": {
+      "error": "Errore indicizzazione: {error}"
     },
     "table": {
       "title": "Titolo",
@@ -147,7 +158,9 @@
     "description": "Cerca nelle fonti indicizzate della tua libreria locale. In questa fase la ricerca e testuale e non usa AI.",
     "search": {
       "placeholder": "Cerca nelle pubblicazioni indicizzate...",
-      "button": "Cerca"
+      "button": "Cerca",
+      "clear_button": "Pulisci ricerca",
+      "textual_notice": "La ricerca e testuale, non semantica."
     },
     "refresh_sources": "Aggiorna fonti",
     "filters": {
@@ -189,9 +202,9 @@
       "copied_reference": "Riferimento copiato negli appunti."
     },
     "reference": {
-      "page": "{title} - pagina {page}",
-      "pages": "{title} - pagine {page_start}-{page_end}",
-      "chunk": "{title} - blocco {chunk}"
+      "page": "{title} — pagina {page}",
+      "pages": "{title} — pagine {page_start}-{page_end}",
+      "chunk": "{title} — blocco {chunk}"
     },
     "page": {
       "none": "N/D"
@@ -209,19 +222,25 @@
     },
     "send": "Invia",
     "clear": "Pulisci chat",
-    "copy_last_answer": "Copia ultima risposta",
-    "empty": "La cronologia e vuota. Scrivi una domanda per iniziare.",
+      "copy_last_answer": "Copia ultima risposta",
+      "copy_last_answer_with_sources": "Copia risposta con fonti",
+      "empty": "La cronologia e vuota. Scrivi una domanda per iniziare.",
+      "initial_hint": "Fai una domanda sulle pubblicazioni indicizzate.",
     "user_label": "Tu",
     "assistant_label": "Assistente",
     "sources_title": "Fonti usate",
     "no_sources": "Nessuna fonte usata.",
-    "insufficient_sources": "Non ci sono informazioni sufficienti nelle pubblicazioni indicizzate per rispondere.",
+      "insufficient_sources": "Non ci sono informazioni sufficienti nelle pubblicazioni indicizzate per rispondere.",
+      "insufficient_sources_suggestion": "Prova a indicizzare piu pubblicazioni o a riformulare la domanda.",
     "local_model_error": "Non riesco a contattare il modello AI locale. Controlla che il server locale sia avviato e che endpoint/modello siano corretti.",
     "busy": "Generazione risposta in corso...",
-    "answer_copied": "Ultima risposta copiata negli appunti.",
+      "answer_copied": "Ultima risposta copiata negli appunti.",
+      "answer_copied_with_sources": "Ultima risposta con fonti copiata negli appunti.",
     "history_cleared": "Cronologia chat cancellata.",
     "confirm_clear_title": "Pulisci chat",
-    "confirm_clear_message": "Vuoi cancellare tutta la cronologia chat locale?",
+      "confirm_clear_message": "Vuoi cancellare tutta la cronologia chat locale?",
+      "remote_endpoint_warning": "Stai usando un endpoint non locale. Domanda e fonti possono uscire dal computer.",
+      "shortcut_hint": "Ctrl+Enter invia la domanda.",
     "filters": {
       "language": "Lingua",
       "publication": "Pubblicazione",
@@ -248,6 +267,7 @@
   "settings": {
     "title": "Impostazioni",
     "language": "Lingua",
+    "language_section": "Lingua",
     "language_description": "Scegli la lingua dell'interfaccia. La preferenza viene salvata localmente e applicata all'avvio successivo.",
     "language_option": {
       "it": "Italiano",
@@ -256,6 +276,8 @@
     },
     "ai_section": "Modello AI locale",
     "ai_description": "Configura un server locale compatibile OpenAI Chat Completions. L'app non scarica modelli e non usa cloud di default.",
+    "ai_privacy_local": "L'endpoint configurato e locale.",
+    "ai_privacy_remote_warning": "Stai usando un endpoint non locale. Domanda e fonti possono essere inviate fuori dal computer.",
     "ai": {
       "endpoint": "Endpoint URL",
       "model": "Nome modello",
@@ -271,6 +293,74 @@
       "invalid_values": "Controlla i valori inseriti.",
       "connection_success": "Connessione al modello locale riuscita.",
       "connection_failed": "Connessione al modello locale fallita."
+    },
+    "data_section": "Dati locali",
+    "data_description": "Percorsi usati dall'app per pubblicazioni, indice e cronologia.",
+    "path": {
+      "app_data": "Directory dati app",
+      "publications": "Directory pubblicazioni",
+      "index": "Directory indice",
+      "metadata": "File metadati",
+      "chat_history": "File cronologia chat"
+    },
+    "open_app_data": "Apri cartella dati",
+    "open_publications": "Apri cartella pubblicazioni",
+    "open_index": "Apri cartella indice",
+    "stats_section": "Statistiche",
+    "stats_description": "Riepilogo della libreria locale.",
+    "stats": {
+      "refresh": "Aggiorna statistiche",
+      "total_publications": "Pubblicazioni totali",
+      "imported_publications": "Importate",
+      "indexed_publications": "Indicizzate",
+      "error_publications": "Con errore",
+      "pending_publications": "In attesa",
+      "total_chunks": "Blocchi totali",
+      "publications_size": "Dimensione pubblicazioni",
+      "index_size": "Dimensione indice",
+      "chat_history_size": "Dimensione cronologia chat"
+    },
+    "maintenance_section": "Manutenzione",
+    "maintenance_description": "Strumenti per controllare e riparare dati locali.",
+    "maintenance": {
+      "check_integrity": "Controlla integrita",
+      "rebuild_index": "Ricostruisci indice",
+      "reset_index": "Resetta indice",
+      "clear_chat_history": "Cancella cronologia chat",
+      "integrity_ok": "Nessun problema rilevato.",
+      "integrity_issues": "Problemi rilevati:",
+      "rebuild_confirm_title": "Ricostruisci indice",
+      "rebuild_confirm_message": "Vuoi reindicizzare tutte le pubblicazioni disponibili?",
+      "rebuild_success": "Indice ricostruito. Processate: {processed}. Fallite: {failed}.",
+      "rebuild_partial": "Ricostruzione parziale. Processate: {processed}. Fallite: {failed}.",
+      "rebuild_failed": "Ricostruzione indice fallita.",
+      "reset_confirm_title": "Resetta indice",
+      "reset_confirm_message": "Vuoi eliminare tutti i blocchi indicizzati senza eliminare i PDF/TXT importati?",
+      "reset_success": "Indice resettato.",
+      "reset_failed": "Reset indice fallito.",
+      "clear_chat_confirm_title": "Cancella cronologia chat",
+      "clear_chat_confirm_message": "Vuoi cancellare la cronologia chat locale?",
+      "clear_chat_success": "Cronologia chat cancellata.",
+      "clear_chat_failed": "Non e stato possibile cancellare la cronologia chat.",
+      "busy": "Operazione in corso..."
+    },
+    "integrity": {
+      "issue": {
+        "metadata_corrupt": "File metadati non leggibile",
+        "manifest_corrupt": "Manifest indice non leggibile",
+        "chat_history_corrupt": "Cronologia chat non leggibile",
+        "missing_file": "File importato mancante",
+        "missing_chunks": "Blocchi indice mancanti",
+        "chunk_count_mismatch": "Conteggio blocchi non coerente",
+        "orphan_chunks": "Blocchi orfani"
+      }
+    },
+    "about_section": "Informazioni app",
+    "about": {
+      "app_name": "Nome app",
+      "version": "Versione",
+      "stage": "Stato",
+      "local_privacy": "JW PubliStudy salva i dati localmente sul computer dell'utente. La chat invia domanda e fonti solo all'endpoint configurato."
     }
   }
 }

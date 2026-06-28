@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QTextCursor
+from PySide6.QtGui import QKeySequence, QShortcut, QTextCursor
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -23,7 +23,7 @@ from app.models.chat_message import ChatMessage
 from app.models.chat_source import ChatSource
 from app.models.publication import Publication
 from app.services.chat_history_repository import ChatHistoryRepository
-from app.services.local_llm_client import LocalLLMClient
+from app.services.local_llm_client import LocalLLMClient, is_local_endpoint
 from app.services.rag_service import RagAnswer, RagService
 from app.services.search_service import SearchService
 from app.settings import AppSettings
@@ -71,10 +71,14 @@ class ChatPanel(QWidget):
         self._description = QLabel()
         self._description.setObjectName("PageSubtitle")
         self._description.setWordWrap(True)
+        self._privacy_warning = QLabel()
+        self._privacy_warning.setObjectName("PrivacyWarning")
+        self._privacy_warning.setWordWrap(True)
         self._sources_status = QLabel()
         self._sources_status.setObjectName("DetailMeta")
         header_layout.addWidget(self._title)
         header_layout.addWidget(self._description)
+        header_layout.addWidget(self._privacy_warning)
         header_layout.addWidget(self._sources_status)
         layout.addLayout(header_layout)
 
@@ -122,6 +126,10 @@ class ChatPanel(QWidget):
         self._input.setMaximumHeight(130)
         layout.addWidget(self._input)
 
+        self._shortcut_hint = QLabel()
+        self._shortcut_hint.setObjectName("DetailMeta")
+        layout.addWidget(self._shortcut_hint)
+
         actions_layout = QHBoxLayout()
         actions_layout.addStretch(1)
         self._clear_button = QPushButton()
@@ -130,13 +138,20 @@ class ChatPanel(QWidget):
         self._copy_last_button = QPushButton()
         self._copy_last_button.setObjectName("SecondaryButton")
         self._copy_last_button.clicked.connect(self._copy_last_answer)
+        self._copy_last_with_sources_button = QPushButton()
+        self._copy_last_with_sources_button.setObjectName("SecondaryButton")
+        self._copy_last_with_sources_button.clicked.connect(self._copy_last_answer_with_sources)
         self._send_button = QPushButton()
         self._send_button.setObjectName("PrimaryButton")
         self._send_button.clicked.connect(self._send_question)
         actions_layout.addWidget(self._clear_button)
         actions_layout.addWidget(self._copy_last_button)
+        actions_layout.addWidget(self._copy_last_with_sources_button)
         actions_layout.addWidget(self._send_button)
         layout.addLayout(actions_layout)
+
+        self._send_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self._input)
+        self._send_shortcut.activated.connect(self._send_question)
 
         self.update_texts()
         self.refresh_sources()
@@ -168,6 +183,8 @@ class ChatPanel(QWidget):
         self._send_button.setText(self._translations.t("chat.send"))
         self._clear_button.setText(self._translations.t("chat.clear"))
         self._copy_last_button.setText(self._translations.t("chat.copy_last_answer"))
+        self._copy_last_with_sources_button.setText(self._translations.t("chat.copy_last_answer_with_sources"))
+        self._shortcut_hint.setText(self._translations.t("chat.shortcut_hint"))
 
         self._populate_language_filter(selected_language)
         self._populate_publication_filter(selected_publication)
@@ -246,7 +263,7 @@ class ChatPanel(QWidget):
 
     def _answer_text(self, result: RagAnswer) -> str:
         if result.error_message == "insufficient_sources":
-            return self._translations.t("rag.insufficient_sources")
+            return f"{self._translations.t('rag.insufficient_sources')}\n\n{self._translations.t('chat.insufficient_sources_suggestion')}"
         if result.error_message == "empty_question":
             return self._translations.t("rag.empty_question")
         if result.error_message == "no_indexed_publications":
@@ -257,7 +274,7 @@ class ChatPanel(QWidget):
 
     def _render_history(self) -> None:
         if not self._messages:
-            self._history.setHtml(f"<p class='empty'>{html.escape(self._translations.t('chat.empty'))}</p>")
+            self._history.setHtml(f"<p class='empty'>{html.escape(self._translations.t('chat.initial_hint'))}</p>")
             return
 
         blocks: list[str] = []
@@ -281,7 +298,8 @@ class ChatPanel(QWidget):
         for source in sources:
             reference = html.escape(self._format_source_reference(source))
             snippet = html.escape(source.snippet)
-            items.append(f"<li><b>[{html.escape(source.source_id)}]</b> {reference}<br><span>{snippet}</span></li>")
+            score_label = html.escape(self._translations.t("study.detail.score"))
+            items.append(f"<li><b>[{html.escape(source.source_id)}]</b> {reference}<br><span>{snippet}</span><br><span>{score_label}: {source.score:.2f}</span></li>")
         return f"<div class='sources'><b>{html.escape(self._translations.t('chat.sources_title'))}</b><ul>{''.join(items)}</ul></div>"
 
     def _format_source_reference(self, source: ChatSource) -> str:
@@ -321,6 +339,21 @@ class ChatPanel(QWidget):
                 self._append_system_status("chat.answer_copied")
                 return
 
+    def _copy_last_answer_with_sources(self) -> None:
+        for message in reversed(self._messages):
+            if message.role != "assistant":
+                continue
+            parts = [message.content]
+            sources = [ChatSource.from_dict(source) for source in message.sources if isinstance(source, dict)]
+            if sources:
+                parts.append("")
+                parts.append(self._translations.t("chat.sources_title"))
+                for source in sources:
+                    parts.append(f"[{source.source_id}] {self._format_source_reference(source)}")
+            QApplication.clipboard().setText("\n".join(parts))
+            self._append_system_status("chat.answer_copied_with_sources")
+            return
+
     def _clear_history(self) -> None:
         dialog = QMessageBox(self)
         dialog.setIcon(QMessageBox.Icon.Question)
@@ -354,12 +387,15 @@ class ChatPanel(QWidget):
         self._model_status.setText(
             f"{status} | {self._translations.t('chat.model.endpoint')}: {endpoint} | {self._translations.t('chat.model.model')}: {model}"
         )
+        self._privacy_warning.setVisible(bool(endpoint and not is_local_endpoint(endpoint)))
+        self._privacy_warning.setText(self._translations.t("chat.remote_endpoint_warning"))
 
     def _set_busy(self, is_busy: bool) -> None:
         self._is_busy = is_busy
         self._send_button.setEnabled(not is_busy)
         self._clear_button.setEnabled(not is_busy)
         self._copy_last_button.setEnabled(not is_busy)
+        self._copy_last_with_sources_button.setEnabled(not is_busy)
         self._test_connection_button.setEnabled(not is_busy)
         self._input.setEnabled(not is_busy)
         if is_busy:

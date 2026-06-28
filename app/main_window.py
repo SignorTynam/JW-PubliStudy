@@ -14,10 +14,12 @@ from app.services.chat_history_repository import ChatHistoryRepository
 from app.services.index_repository import IndexRepository
 from app.services.indexing_service import IndexingService
 from app.services.local_llm_client import LocalLLMClient
+from app.services.maintenance_service import MaintenanceService
 from app.services.publication_repository import PublicationRepository
 from app.services.rag_service import RagService
 from app.services.search_service import SearchService
 from app.settings import AppSettings
+from app.version import APP_NAME, APP_VERSION
 
 
 class MainWindow(QMainWindow):
@@ -46,6 +48,12 @@ class MainWindow(QMainWindow):
         self._llm_client = LocalLLMClient()
         self._rag_service = RagService(self._search_service, self._llm_client)
         self._chat_history_repository = ChatHistoryRepository(self._publication_repository.paths)
+        self._maintenance_service = MaintenanceService(
+            self._publication_repository,
+            self._index_repository,
+            self._indexing_service,
+            self._chat_history_repository,
+        )
         self._current_page = "home"
 
         self.resize(1100, 720)
@@ -92,7 +100,13 @@ class MainWindow(QMainWindow):
             self._settings,
             self._llm_client,
         )
-        self._settings_page = SettingsPage(translations, self._settings, self._llm_client)
+        self._settings_page = SettingsPage(
+            translations,
+            self._settings,
+            self._llm_client,
+            self._maintenance_service,
+            self._publication_repository.paths,
+        )
         self._settings_page.language_changed.connect(self._change_language)
 
         self._pages = (
@@ -120,6 +134,10 @@ class MainWindow(QMainWindow):
         self._stack.setCurrentIndex(index)
         if page_id == "study":
             self._study_page.refresh_sources()
+        if page_id == "publications":
+            self._publications_page.refresh_publications()
+        if page_id == "settings":
+            self._settings_page.refresh_stats()
         self._top_bar_title.setText(self._translations.t(self.PAGE_TITLE_KEYS[page_id]))
 
     def _change_language(self, language: str) -> None:
@@ -128,7 +146,7 @@ class MainWindow(QMainWindow):
         self._update_texts()
 
     def _update_texts(self) -> None:
-        self.setWindowTitle(self._translations.t("app.title"))
+        self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
         self._navigation.update_texts()
         for page in self._pages:
             page.update_texts()

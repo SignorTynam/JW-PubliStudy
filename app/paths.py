@@ -48,3 +48,16 @@ class AppPaths:
     @property
     def chat_history_file(self) -> Path:
         return self.app_data_dir / "chat_history.json"
+
+    @property
+    def logs_dir(self) -> Path:
+        path = self.app_data_dir / "logs"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def ensure_all_dirs(self) -> None:
+        self.app_data_dir.mkdir(parents=True, exist_ok=True)
+        self.publications_dir.mkdir(parents=True, exist_ok=True)
+        self.index_dir.mkdir(parents=True, exist_ok=True)
+        self.chunks_dir.mkdir(parents=True, exist_ok=True)
+        self.logs_dir.mkdir(parents=True, exist_ok=True)

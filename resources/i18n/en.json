@@ -3,7 +3,9 @@
     "title": "JW PubliStudy"
   },
   "common": {
-    "ok": "OK"
+    "ok": "OK",
+    "cancel": "Cancel",
+    "close": "Close"
   },
   "nav": {
     "home": "Home",
@@ -33,6 +35,8 @@
     "title": "Publications",
     "description": "Import and manage local publications in PDF or TXT format. This phase stores only files and metadata.",
     "import_button": "Import publication",
+    "index_button": "Index",
+    "index_all_button": "Index all",
     "rename_button": "Rename",
     "delete_button": "Delete",
     "empty": "No publications imported. Import a PDF or TXT file to get started.",
@@ -70,7 +74,9 @@
       "type": "Type",
       "size": "Size",
       "status": "Status",
-      "imported_at": "Imported at"
+      "chunks": "Chunks",
+      "imported_at": "Imported at",
+      "indexed_at": "Indexed at"
     },
     "size": {
       "bytes": "{size} B",
@@ -102,13 +108,28 @@
       "duplicate": "This publication has already been imported.",
       "import_failed": "The publication could not be imported.",
       "delete_failed": "The publication could not be deleted.",
-      "rename_failed": "The publication could not be renamed."
+      "rename_failed": "The publication could not be renamed.",
+      "index_failed": "The publication could not be indexed.",
+      "delete_index_failed": "The indexed chunks for this publication could not be deleted."
     },
     "success": {
       "title": "Operation completed",
       "imported": "Publication imported successfully.",
       "deleted": "Publication deleted successfully.",
       "renamed": "Publication renamed successfully."
+    },
+    "indexing": {
+      "title": "Indexing",
+      "started": "Indexing started.",
+      "success": "Indexing completed. Chunks created: {count}.",
+      "success_many": "Indexing completed for {count} publications.",
+      "failed": "Indexing failed.",
+      "no_publication_selected": "Select a publication to index.",
+      "nothing_to_index": "There are no publications to index.",
+      "no_extractable_text": "No extractable text was found. Scanned PDFs without text are not supported in this phase.",
+      "unsupported_type": "This file type cannot be indexed.",
+      "missing_file": "The imported file is no longer present in the local data directory.",
+      "partial_result": "Indexing completed for {count} publications. Failed: {failed}."
     }
   },
   "study": {

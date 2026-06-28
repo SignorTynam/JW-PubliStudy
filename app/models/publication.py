@@ -22,6 +22,9 @@ class Publication:
     imported_at: str
     status: str
     sha256: str
+    indexed_at: str = ""
+    chunk_count: int = 0
+    error_message: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -35,6 +38,9 @@ class Publication:
             "imported_at": self.imported_at,
             "status": self.status,
             "sha256": self.sha256,
+            "indexed_at": self.indexed_at,
+            "chunk_count": self.chunk_count,
+            "error_message": self.error_message,
         }
 
     @classmethod
@@ -49,6 +55,9 @@ class Publication:
         imported_at = _string_value(data.get("imported_at"), "")
         status = _choice_value(data.get("status"), VALID_STATUSES, "imported")
         sha256 = _string_value(data.get("sha256"), "")
+        indexed_at = _string_value(data.get("indexed_at"), "")
+        chunk_count = _int_value(data.get("chunk_count"), 0)
+        error_message = _string_value(data.get("error_message"), "")
 
         return cls(
             id=publication_id,
@@ -61,6 +70,9 @@ class Publication:
             imported_at=imported_at,
             status=status,
             sha256=sha256,
+            indexed_at=indexed_at,
+            chunk_count=chunk_count,
+            error_message=error_message,
         )
 
 

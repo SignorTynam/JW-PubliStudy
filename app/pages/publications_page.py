@@ -4,6 +4,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -23,6 +24,7 @@ from PySide6.QtWidgets import (
 
 from app.i18n import I18n
 from app.models.publication import Publication
+from app.services.indexing_service import IndexingResult, IndexingService
 from app.services.publication_repository import (
     DuplicatePublicationError,
     PublicationError,
@@ -157,6 +159,9 @@ class PublicationsPage(QWidget):
     STATUS_FILTERS = (
         ("all", "publications.status.all"),
         ("imported", "publications.status.imported"),
+        ("pending_indexing", "publications.status.pending_indexing"),
+        ("indexed", "publications.status.indexed"),
+        ("error", "publications.status.error"),
     )
     TABLE_HEADERS = (
         "publications.table.title",
@@ -164,14 +169,23 @@ class PublicationsPage(QWidget):
         "publications.table.type",
         "publications.table.size",
         "publications.table.status",
+        "publications.table.chunks",
         "publications.table.imported_at",
+        "publications.table.indexed_at",
     )
 
-    def __init__(self, translations: I18n, repository: PublicationRepository) -> None:
+    def __init__(
+        self,
+        translations: I18n,
+        repository: PublicationRepository,
+        indexing_service: IndexingService,
+    ) -> None:
         super().__init__()
         self._translations = translations
         self._repository = repository
+        self._indexing_service = indexing_service
         self._selected_publication_id: str | None = None
+        self._is_busy = False
 
         self.setObjectName("Page")
         layout = QVBoxLayout(self)
@@ -194,6 +208,11 @@ class PublicationsPage(QWidget):
         self._import_button.setObjectName("PrimaryButton")
         self._import_button.clicked.connect(self._import_publication)
         header_layout.addWidget(self._import_button, 0, Qt.AlignmentFlag.AlignTop)
+
+        self._index_all_button = QPushButton()
+        self._index_all_button.setObjectName("SecondaryButton")
+        self._index_all_button.clicked.connect(self._index_all_publications)
+        header_layout.addWidget(self._index_all_button, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(header_layout)
 
         filters_frame = QFrame()
@@ -230,6 +249,8 @@ class PublicationsPage(QWidget):
         self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self._table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         self._table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self._table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self._table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
         self._table.itemSelectionChanged.connect(self._on_selection_changed)
         layout.addWidget(self._table, 1)
 
@@ -241,12 +262,16 @@ class PublicationsPage(QWidget):
 
         actions_layout = QHBoxLayout()
         actions_layout.addStretch(1)
+        self._index_button = QPushButton()
+        self._index_button.setObjectName("PrimaryButton")
+        self._index_button.clicked.connect(self._index_selected_publication)
         self._rename_button = QPushButton()
         self._rename_button.setObjectName("SecondaryButton")
         self._rename_button.clicked.connect(self._rename_selected_publication)
         self._delete_button = QPushButton()
         self._delete_button.setObjectName("DangerButton")
         self._delete_button.clicked.connect(self._delete_selected_publication)
+        actions_layout.addWidget(self._index_button)
         actions_layout.addWidget(self._rename_button)
         actions_layout.addWidget(self._delete_button)
         layout.addLayout(actions_layout)
@@ -262,6 +287,8 @@ class PublicationsPage(QWidget):
         self._title.setText(self._translations.t("publications.title"))
         self._description.setText(self._translations.t("publications.description"))
         self._import_button.setText(self._translations.t("publications.import_button"))
+        self._index_button.setText(self._translations.t("publications.index_button"))
+        self._index_all_button.setText(self._translations.t("publications.index_all_button"))
         self._rename_button.setText(self._translations.t("publications.rename_button"))
         self._delete_button.setText(self._translations.t("publications.delete_button"))
         self._empty_state.setText(self._translations.t("publications.empty"))
@@ -349,6 +376,13 @@ class PublicationsPage(QWidget):
             self._refresh_table(publication.id)
             self._show_info("publications.success.renamed")
 
+    def _index_selected_publication(self) -> None:
+        publication = self._selected_publication()
+        if publication is None:
+            self._show_info("publications.indexing.no_publication_selected", title_key="publications.indexing.title")
+            return
+        self._run_indexing(publication.id)
+
     def _delete_selected_publication(self) -> None:
         publication = self._selected_publication()
         if publication is None:
@@ -373,6 +407,12 @@ class PublicationsPage(QWidget):
             return
 
         try:
+            self._indexing_service.delete_publication_index(publication.id)
+        except Exception:
+            self._show_error("publications.error.delete_index_failed")
+            return
+
+        try:
             deleted = self._repository.delete_publication(publication.id)
         except PublicationError:
             self._show_error("publications.error.delete_failed")
@@ -382,6 +422,68 @@ class PublicationsPage(QWidget):
             self._selected_publication_id = None
             self._refresh_table()
             self._show_info("publications.success.deleted")
+
+    def _index_all_publications(self) -> None:
+        candidates = [
+            publication
+            for publication in self._repository.list_publications()
+            if publication.status in {"imported", "error"}
+        ]
+        if not candidates:
+            self._show_info("publications.indexing.nothing_to_index", title_key="publications.indexing.title")
+            return
+
+        self._set_busy(True)
+        success_count = 0
+        failed_results: list[IndexingResult] = []
+        try:
+            for publication in candidates:
+                self._mark_pending_for_ui(publication.id)
+                result = self._indexing_service.index_publication(publication.id)
+                if result.success:
+                    success_count += 1
+                else:
+                    failed_results.append(result)
+                self._refresh_table(publication.id)
+                QApplication.processEvents()
+        finally:
+            self._set_busy(False)
+            self._refresh_table()
+
+        if failed_results and success_count:
+            self._show_info(
+                "publications.indexing.partial_result",
+                title_key="publications.indexing.title",
+                count=success_count,
+                failed=len(failed_results),
+            )
+        elif failed_results:
+            self._show_error(self._indexing_error_key(failed_results[0].error_message))
+        else:
+            self._show_info(
+                "publications.indexing.success_many",
+                title_key="publications.indexing.title",
+                count=success_count,
+            )
+
+    def _run_indexing(self, publication_id: str) -> None:
+        self._set_busy(True)
+        try:
+            self._mark_pending_for_ui(publication_id)
+            result = self._indexing_service.index_publication(publication_id)
+            self._refresh_table(publication_id)
+            QApplication.processEvents()
+        finally:
+            self._set_busy(False)
+
+        if result.success:
+            self._show_info(
+                "publications.indexing.success",
+                title_key="publications.indexing.title",
+                count=result.chunk_count,
+            )
+        else:
+            self._show_error(self._indexing_error_key(result.error_message))
 
     def _refresh_table(self, publication_id_to_select: str | None = None) -> None:
         self._table.setSortingEnabled(False)
@@ -406,7 +508,9 @@ class PublicationsPage(QWidget):
             self._translations.t(f"publications.type.{publication.file_type}"),
             self._format_size(publication.file_size),
             self._translations.t(f"publications.status.{publication.status}"),
+            str(publication.chunk_count),
             publication.imported_at,
+            publication.indexed_at,
         )
         for column, value in enumerate(values):
             item = QTableWidgetItem(value)
@@ -441,8 +545,11 @@ class PublicationsPage(QWidget):
                 self._selected_publication_id = publication_id
 
         has_selection = self._selected_publication_id is not None
-        self._rename_button.setEnabled(has_selection)
-        self._delete_button.setEnabled(has_selection)
+        self._index_button.setEnabled(has_selection and not self._is_busy)
+        self._rename_button.setEnabled(has_selection and not self._is_busy)
+        self._delete_button.setEnabled(has_selection and not self._is_busy)
+        self._import_button.setEnabled(not self._is_busy)
+        self._index_all_button.setEnabled(not self._is_busy and bool(self._indexable_publications()))
 
     def _select_publication(self, publication_id: str) -> None:
         for row in range(self._table.rowCount()):
@@ -463,22 +570,55 @@ class PublicationsPage(QWidget):
             return self._translations.t("publications.size.kb").format(size=size / 1024)
         return self._translations.t("publications.size.mb").format(size=size / (1024 * 1024))
 
-    def _show_error(self, message_key: str) -> None:
+    def _indexable_publications(self) -> list[Publication]:
+        return [
+            publication
+            for publication in self._repository.list_publications()
+            if publication.status in {"imported", "error"}
+        ]
+
+    def _set_busy(self, is_busy: bool) -> None:
+        self._is_busy = is_busy
+        self._on_selection_changed()
+
+    def _mark_pending_for_ui(self, publication_id: str) -> None:
+        try:
+            self._repository.update_indexing_status(publication_id, "pending_indexing")
+        except PublicationError:
+            return
+        self._refresh_table(publication_id)
+        QApplication.processEvents()
+
+    def _indexing_error_key(self, error_message: str) -> str:
+        mapping = {
+            "missing_file": "publications.indexing.missing_file",
+            "unsupported_type": "publications.indexing.unsupported_type",
+            "no_extractable_text": "publications.indexing.no_extractable_text",
+            "empty_text": "publications.indexing.no_extractable_text",
+        }
+        return mapping.get(error_message, "publications.error.index_failed")
+
+    def _show_error(self, message_key: str, **format_values: object) -> None:
         dialog = QMessageBox(self)
         dialog.setIcon(QMessageBox.Icon.Critical)
         dialog.setWindowTitle(self._translations.t("publications.error.title"))
-        dialog.setText(self._translations.t(message_key))
+        dialog.setText(self._translations.t(message_key).format(**format_values))
         dialog.addButton(
             self._translations.t("common.ok"),
             QMessageBox.ButtonRole.AcceptRole,
         )
         dialog.exec()
 
-    def _show_info(self, message_key: str) -> None:
+    def _show_info(
+        self,
+        message_key: str,
+        title_key: str = "publications.success.title",
+        **format_values: object,
+    ) -> None:
         dialog = QMessageBox(self)
         dialog.setIcon(QMessageBox.Icon.Information)
-        dialog.setWindowTitle(self._translations.t("publications.success.title"))
-        dialog.setText(self._translations.t(message_key))
+        dialog.setWindowTitle(self._translations.t(title_key))
+        dialog.setText(self._translations.t(message_key).format(**format_values))
         dialog.addButton(
             self._translations.t("common.ok"),
             QMessageBox.ButtonRole.AcceptRole,

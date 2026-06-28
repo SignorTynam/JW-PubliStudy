@@ -31,4 +31,6 @@ Thumbs.db
 # The app normally stores these through QStandardPaths outside Git.
 /publications/
 /publications.json
+/index/
+/index_manifest.json
 /data/

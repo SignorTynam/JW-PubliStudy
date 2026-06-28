@@ -3,7 +3,9 @@
     "title": "JW PubliStudy"
   },
   "common": {
-    "ok": "OK"
+    "ok": "OK",
+    "cancel": "Annulla",
+    "close": "Chiudi"
   },
   "nav": {
     "home": "Home",
@@ -33,6 +35,8 @@
     "title": "Pubblicazioni",
     "description": "Importa e gestisci pubblicazioni locali in formato PDF o TXT. In questa fase vengono salvati solo file e metadati.",
     "import_button": "Importa pubblicazione",
+    "index_button": "Indicizza",
+    "index_all_button": "Indicizza tutte",
     "rename_button": "Rinomina",
     "delete_button": "Elimina",
     "empty": "Nessuna pubblicazione importata. Importa un file PDF o TXT per iniziare.",
@@ -70,7 +74,9 @@
       "type": "Tipo",
       "size": "Dimensione",
       "status": "Stato",
-      "imported_at": "Data importazione"
+      "chunks": "Blocchi",
+      "imported_at": "Data importazione",
+      "indexed_at": "Data indicizzazione"
     },
     "size": {
       "bytes": "{size} B",
@@ -102,13 +108,28 @@
       "duplicate": "Questa pubblicazione e gia stata importata.",
       "import_failed": "Non e stato possibile importare la pubblicazione.",
       "delete_failed": "Non e stato possibile eliminare la pubblicazione.",
-      "rename_failed": "Non e stato possibile rinominare la pubblicazione."
+      "rename_failed": "Non e stato possibile rinominare la pubblicazione.",
+      "index_failed": "Non e stato possibile indicizzare la pubblicazione.",
+      "delete_index_failed": "Non e stato possibile eliminare i blocchi indicizzati della pubblicazione."
     },
     "success": {
       "title": "Operazione completata",
       "imported": "Pubblicazione importata correttamente.",
       "deleted": "Pubblicazione eliminata correttamente.",
       "renamed": "Pubblicazione rinominata correttamente."
+    },
+    "indexing": {
+      "title": "Indicizzazione",
+      "started": "Indicizzazione avviata.",
+      "success": "Indicizzazione completata. Blocchi creati: {count}.",
+      "success_many": "Indicizzazione completata per {count} pubblicazioni.",
+      "failed": "Indicizzazione fallita.",
+      "no_publication_selected": "Seleziona una pubblicazione da indicizzare.",
+      "nothing_to_index": "Non ci sono pubblicazioni da indicizzare.",
+      "no_extractable_text": "Non e stato trovato testo estraibile. I PDF scannerizzati senza testo non sono supportati in questa fase.",
+      "unsupported_type": "Questo tipo di file non puo essere indicizzato.",
+      "missing_file": "Il file importato non e piu presente nella directory dati locale.",
+      "partial_result": "Indicizzazione completata per {count} pubblicazioni. Fallite: {failed}."
     }
   },
   "study": {

@@ -28,11 +28,21 @@ class PublicationRepository:
         self._paths = paths or AppPaths()
         self._publications: list[Publication] = self._load_publications()
 
+    @property
+    def paths(self) -> AppPaths:
+        return self._paths
+
     def list_publications(self) -> list[Publication]:
         return list(self._publications)
 
     def get_publication(self, publication_id: str) -> Publication | None:
         return next((publication for publication in self._publications if publication.id == publication_id), None)
+
+    def get_stored_file_path(self, publication_id: str) -> Path | None:
+        publication = self.get_publication(publication_id)
+        if publication is None or not publication.stored_filename:
+            return None
+        return self._paths.publications_dir / publication.stored_filename
 
     def add_publication(self, source_path: Path, language: str, title: str | None = None) -> Publication:
         source = Path(source_path)
@@ -116,6 +126,43 @@ class PublicationRepository:
             publication.title = previous_title
             raise
         return True
+
+    def update_indexing_status(
+        self,
+        publication_id: str,
+        status: str,
+        chunk_count: int = 0,
+        indexed_at: str = "",
+        error_message: str = "",
+    ) -> bool:
+        publication = self.get_publication(publication_id)
+        if publication is None or status not in {"imported", "pending_indexing", "indexed", "error"}:
+            return False
+
+        previous_values = (
+            publication.status,
+            publication.chunk_count,
+            publication.indexed_at,
+            publication.error_message,
+        )
+        publication.status = status
+        publication.chunk_count = chunk_count
+        publication.indexed_at = indexed_at
+        publication.error_message = error_message
+        try:
+            self.save()
+        except PublicationError:
+            (
+                publication.status,
+                publication.chunk_count,
+                publication.indexed_at,
+                publication.error_message,
+            ) = previous_values
+            raise
+        return True
+
+    def save(self) -> None:
+        self._save_publications()
 
     def _load_publications(self) -> list[Publication]:
         metadata_file = self._paths.metadata_file

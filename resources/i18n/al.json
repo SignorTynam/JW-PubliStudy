@@ -3,7 +3,9 @@
     "title": "JW PubliStudy"
   },
   "common": {
-    "ok": "OK"
+    "ok": "OK",
+    "cancel": "Anulo",
+    "close": "Mbyll"
   },
   "nav": {
     "home": "Kreu",
@@ -33,6 +35,8 @@
     "title": "Botime",
     "description": "Importo dhe menaxho botime lokale ne format PDF ose TXT. Ne kete faze ruhen vetem skedaret dhe metadhenat.",
     "import_button": "Importo botim",
+    "index_button": "Indekso",
+    "index_all_button": "Indekso te gjitha",
     "rename_button": "Riemerto",
     "delete_button": "Fshi",
     "empty": "Nuk ka botime te importuara. Importo nje skedar PDF ose TXT per te filluar.",
@@ -70,7 +74,9 @@
       "type": "Tipi",
       "size": "Madhesia",
       "status": "Statusi",
-      "imported_at": "Data e importimit"
+      "chunks": "Blloqe",
+      "imported_at": "Data e importimit",
+      "indexed_at": "Data e indeksimit"
     },
     "size": {
       "bytes": "{size} B",
@@ -102,13 +108,28 @@
       "duplicate": "Ky botim eshte importuar tashme.",
       "import_failed": "Nuk ishte e mundur te importohej botimi.",
       "delete_failed": "Nuk ishte e mundur te fshihej botimi.",
-      "rename_failed": "Nuk ishte e mundur te riemertohej botimi."
+      "rename_failed": "Nuk ishte e mundur te riemertohej botimi.",
+      "index_failed": "Nuk ishte e mundur te indeksohej botimi.",
+      "delete_index_failed": "Nuk ishte e mundur te fshiheshin blloqet e indeksuara te botimit."
     },
     "success": {
       "title": "Veprimi u krye",
       "imported": "Botimi u importua me sukses.",
       "deleted": "Botimi u fshi me sukses.",
       "renamed": "Botimi u riemertua me sukses."
+    },
+    "indexing": {
+      "title": "Indeksimi",
+      "started": "Indeksimi filloi.",
+      "success": "Indeksimi perfundoi. Blloqe te krijuara: {count}.",
+      "success_many": "Indeksimi perfundoi per {count} botime.",
+      "failed": "Indeksimi deshtoi.",
+      "no_publication_selected": "Zgjidh nje botim per ta indeksuar.",
+      "nothing_to_index": "Nuk ka botime per indeksim.",
+      "no_extractable_text": "Nuk u gjet tekst i nxjerre. PDF-te e skanuara pa tekst nuk mbeshteten ne kete faze.",
+      "unsupported_type": "Ky tip skedari nuk mund te indeksohet.",
+      "missing_file": "Skedari i importuar nuk gjendet me ne direktorine lokale te te dhenave.",
+      "partial_result": "Indeksimi perfundoi per {count} botime. Deshtuan: {failed}."
     }
   },
   "study": {

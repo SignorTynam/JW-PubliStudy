@@ -28,3 +28,19 @@ class AppPaths:
     @property
     def metadata_file(self) -> Path:
         return self.app_data_dir / "publications.json"
+
+    @property
+    def index_dir(self) -> Path:
+        path = self.app_data_dir / "index"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def chunks_dir(self) -> Path:
+        path = self.index_dir / "chunks"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def index_manifest_file(self) -> Path:
+        return self.index_dir / "index_manifest.json"

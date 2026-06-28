@@ -59,6 +59,18 @@ La fase 2 non legge ancora il contenuto dei documenti, non estrae testo dai PDF,
 
 La fase 3 non implementa AI, embeddings, chat, RAG, ricerca semantica o citazioni generate automaticamente.
 
+## Fase 4 - Ricerca locale nelle fonti
+
+- Ricerca testuale nei chunk indicizzati
+- Filtri per lingua e pubblicazione
+- Limite configurabile dei risultati
+- Risultati ordinati per rilevanza
+- Dettaglio del risultato con fonte, file, lingua, pagina o blocco
+- Copia del testo completo del chunk
+- Copia del riferimento della fonte
+
+La fase 4 non implementa AI, embeddings, ricerca vettoriale, RAG, chat con modello locale o generazione di risposte.
+
 ## Fasi successive
 
-La fase 4 si occupera della ricerca locale nelle fonti. Nelle fasi successive potranno essere aggiunte citazioni, funzionalita RAG e integrazioni AI locali.
+La fase 5 sara dedicata alla chat AI locale con recupero delle fonti e citazioni. Nelle fasi successive potranno essere aggiunte ricerca semantica, embeddings e integrazioni AI locali.

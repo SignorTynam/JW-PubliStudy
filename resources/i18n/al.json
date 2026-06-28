@@ -134,7 +134,58 @@
   },
   "study": {
     "title": "Studim / Chat",
-    "placeholder": "Ne te ardhmen kjo zone do te kete nje chat studimi me AI lokale dhe citime nga botimet. Ne kete faze nuk ka chat, modele ose thirrje AI."
+    "description": "Kerko ne burimet e indeksuara te bibliotekes lokale. Ne kete faze kerkimi eshte tekstual dhe nuk perdor AI.",
+    "search": {
+      "placeholder": "Kerko ne botimet e indeksuara...",
+      "button": "Kerko"
+    },
+    "refresh_sources": "Rifresko burimet",
+    "filters": {
+      "language": "Gjuha",
+      "publication": "Botimi",
+      "limit": "Kufiri",
+      "all_languages": "Te gjitha",
+      "all_publications": "Te gjitha botimet e indeksuara",
+      "limit_10": "10",
+      "limit_20": "20",
+      "limit_30": "30",
+      "limit_50": "50"
+    },
+    "results": {
+      "count": "Rezultate te gjetura: {count}",
+      "empty_no_index": "Nuk ka botime te indeksuara. Shko te seksioni Botime dhe indekso te pakten nje skedar.",
+      "empty_query": "Shkruaj nje fjale ose fraze per te kerkuar.",
+      "empty_no_results": "Nuk u gjet asnje rezultat ne botimet e indeksuara.",
+      "table": {
+        "source": "Burimi",
+        "language": "Gjuha",
+        "page": "Faqja",
+        "snippet": "Pamje e shkurter",
+        "score": "Rendesia"
+      }
+    },
+    "detail": {
+      "title": "Detaje rezultati",
+      "no_selection": "Zgjidh nje rezultat per te pare tekstin e plote te bllokut.",
+      "source": "Burimi",
+      "file": "Skedari",
+      "language": "Gjuha",
+      "page": "Faqja",
+      "score": "Rendesia",
+      "text": "Teksti",
+      "copy_text": "Kopjo tekstin",
+      "copy_reference": "Kopjo referencen",
+      "copied_text": "Teksti u kopjua ne clipboard.",
+      "copied_reference": "Referenca u kopjua ne clipboard."
+    },
+    "reference": {
+      "page": "{title} - faqja {page}",
+      "pages": "{title} - faqet {page_start}-{page_end}",
+      "chunk": "{title} - blloku {chunk}"
+    },
+    "page": {
+      "none": "N/A"
+    }
   },
   "settings": {
     "title": "Cilesimet",

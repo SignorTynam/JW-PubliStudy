@@ -52,19 +52,22 @@ def apply_theme(app: QApplication) -> None:
 
         QPushButton#PrimaryButton,
         QPushButton#SecondaryButton,
-        QPushButton#DangerButton {
+        QPushButton#DangerButton,
+        QPushButton#SearchButton {
             border-radius: 8px;
             padding: 10px 16px;
             font-weight: 700;
         }
 
-        QPushButton#PrimaryButton {
+        QPushButton#PrimaryButton,
+        QPushButton#SearchButton {
             background: #1d4f8f;
             color: #ffffff;
             border: 1px solid #1d4f8f;
         }
 
-        QPushButton#PrimaryButton:hover {
+        QPushButton#PrimaryButton:hover,
+        QPushButton#SearchButton:hover {
             background: #183f72;
             border-color: #183f72;
         }
@@ -195,14 +198,21 @@ def apply_theme(app: QApplication) -> None:
             width: 28px;
         }
 
-        QLineEdit {
+        QLineEdit,
+        QLineEdit#SearchInput {
             background: #ffffff;
             border: 1px solid #cfd8e5;
             border-radius: 8px;
             padding: 8px 12px;
         }
 
-        QLineEdit:focus {
+        QLineEdit#SearchInput {
+            padding: 10px 12px;
+            font-size: 15px;
+        }
+
+        QLineEdit:focus,
+        QLineEdit#SearchInput:focus {
             border-color: #1d4f8f;
         }
 
@@ -211,7 +221,8 @@ def apply_theme(app: QApplication) -> None:
             background: #f6f7f9;
         }
 
-        QTableWidget#PublicationsTable {
+        QTableWidget#PublicationsTable,
+        QTableWidget#ResultsTable {
             background: #ffffff;
             border: 1px solid #e1e6ee;
             border-radius: 8px;
@@ -221,8 +232,37 @@ def apply_theme(app: QApplication) -> None:
             alternate-background-color: #f8fafc;
         }
 
-        QTableWidget#PublicationsTable::item {
+        QTableWidget#PublicationsTable::item,
+        QTableWidget#ResultsTable::item {
             padding: 8px;
+        }
+
+        QFrame#DetailPanel {
+            background: #ffffff;
+            border: 1px solid #e1e6ee;
+            border-radius: 8px;
+        }
+
+        QLabel#DetailTitle {
+            background: transparent;
+            color: #172033;
+            font-size: 17px;
+            font-weight: 750;
+        }
+
+        QLabel#DetailMeta {
+            background: transparent;
+            color: #5e6b80;
+            font-size: 13px;
+        }
+
+        QTextEdit#ChunkText {
+            background: #f8fafc;
+            border: 1px solid #dbe3ee;
+            border-radius: 8px;
+            padding: 10px;
+            color: #172033;
+            font-size: 14px;
         }
 
         QHeaderView::section {

@@ -134,7 +134,58 @@
   },
   "study": {
     "title": "Studio / Chat",
-    "placeholder": "In futuro questa area ospitera una chat di studio con AI locale e citazioni dalle pubblicazioni. In questa fase non sono presenti chat, modelli o chiamate AI."
+    "description": "Cerca nelle fonti indicizzate della tua libreria locale. In questa fase la ricerca e testuale e non usa AI.",
+    "search": {
+      "placeholder": "Cerca nelle pubblicazioni indicizzate...",
+      "button": "Cerca"
+    },
+    "refresh_sources": "Aggiorna fonti",
+    "filters": {
+      "language": "Lingua",
+      "publication": "Pubblicazione",
+      "limit": "Limite",
+      "all_languages": "Tutte",
+      "all_publications": "Tutte le pubblicazioni indicizzate",
+      "limit_10": "10",
+      "limit_20": "20",
+      "limit_30": "30",
+      "limit_50": "50"
+    },
+    "results": {
+      "count": "Risultati trovati: {count}",
+      "empty_no_index": "Nessuna pubblicazione indicizzata. Vai nella sezione Pubblicazioni e indicizza almeno un file.",
+      "empty_query": "Scrivi una parola o una frase da cercare.",
+      "empty_no_results": "Nessun risultato trovato nelle pubblicazioni indicizzate.",
+      "table": {
+        "source": "Fonte",
+        "language": "Lingua",
+        "page": "Pagina",
+        "snippet": "Anteprima",
+        "score": "Rilevanza"
+      }
+    },
+    "detail": {
+      "title": "Dettaglio risultato",
+      "no_selection": "Seleziona un risultato per vedere il testo completo del blocco.",
+      "source": "Fonte",
+      "file": "File",
+      "language": "Lingua",
+      "page": "Pagina",
+      "score": "Rilevanza",
+      "text": "Testo",
+      "copy_text": "Copia testo",
+      "copy_reference": "Copia riferimento",
+      "copied_text": "Testo copiato negli appunti.",
+      "copied_reference": "Riferimento copiato negli appunti."
+    },
+    "reference": {
+      "page": "{title} - pagina {page}",
+      "pages": "{title} - pagine {page_start}-{page_end}",
+      "chunk": "{title} - blocco {chunk}"
+    },
+    "page": {
+      "none": "N/D"
+    }
   },
   "settings": {
     "title": "Impostazioni",

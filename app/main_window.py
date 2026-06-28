@@ -10,8 +10,10 @@ from app.pages.home_page import HomePage
 from app.pages.publications_page import PublicationsPage
 from app.pages.settings_page import SettingsPage
 from app.pages.study_page import StudyPage
+from app.services.index_repository import IndexRepository
 from app.services.indexing_service import IndexingService
 from app.services.publication_repository import PublicationRepository
+from app.services.search_service import SearchService
 from app.settings import AppSettings
 
 
@@ -35,7 +37,9 @@ class MainWindow(QMainWindow):
         self._translations = translations
         self._settings = settings
         self._publication_repository = PublicationRepository()
-        self._indexing_service = IndexingService(self._publication_repository)
+        self._index_repository = IndexRepository(self._publication_repository.paths)
+        self._indexing_service = IndexingService(self._publication_repository, self._index_repository)
+        self._search_service = SearchService(self._publication_repository, self._index_repository)
         self._current_page = "home"
 
         self.resize(1100, 720)
@@ -73,7 +77,11 @@ class MainWindow(QMainWindow):
             self._publication_repository,
             self._indexing_service,
         )
-        self._study_page = StudyPage(translations)
+        self._study_page = StudyPage(
+            translations,
+            self._publication_repository,
+            self._search_service,
+        )
         self._settings_page = SettingsPage(translations)
         self._settings_page.language_changed.connect(self._change_language)
 
@@ -100,6 +108,8 @@ class MainWindow(QMainWindow):
             return
         self._current_page = page_id
         self._stack.setCurrentIndex(index)
+        if page_id == "study":
+            self._study_page.refresh_sources()
         self._top_bar_title.setText(self._translations.t(self.PAGE_TITLE_KEYS[page_id]))
 
     def _change_language(self, language: str) -> None:

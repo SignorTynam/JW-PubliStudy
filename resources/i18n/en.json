@@ -134,7 +134,58 @@
   },
   "study": {
     "title": "Study / Chat",
-    "placeholder": "In the future this area will host a study chat with local AI and citations from publications. This phase does not include chat, models, or AI calls."
+    "description": "Search the indexed sources in your local library. In this phase search is text-based and does not use AI.",
+    "search": {
+      "placeholder": "Search indexed publications...",
+      "button": "Search"
+    },
+    "refresh_sources": "Refresh sources",
+    "filters": {
+      "language": "Language",
+      "publication": "Publication",
+      "limit": "Limit",
+      "all_languages": "All",
+      "all_publications": "All indexed publications",
+      "limit_10": "10",
+      "limit_20": "20",
+      "limit_30": "30",
+      "limit_50": "50"
+    },
+    "results": {
+      "count": "Results found: {count}",
+      "empty_no_index": "No indexed publications. Go to Publications and index at least one file.",
+      "empty_query": "Type a word or phrase to search.",
+      "empty_no_results": "No results found in indexed publications.",
+      "table": {
+        "source": "Source",
+        "language": "Language",
+        "page": "Page",
+        "snippet": "Preview",
+        "score": "Relevance"
+      }
+    },
+    "detail": {
+      "title": "Result detail",
+      "no_selection": "Select a result to see the full chunk text.",
+      "source": "Source",
+      "file": "File",
+      "language": "Language",
+      "page": "Page",
+      "score": "Relevance",
+      "text": "Text",
+      "copy_text": "Copy text",
+      "copy_reference": "Copy reference",
+      "copied_text": "Text copied to clipboard.",
+      "copied_reference": "Reference copied to clipboard."
+    },
+    "reference": {
+      "page": "{title} - page {page}",
+      "pages": "{title} - pages {page_start}-{page_end}",
+      "chunk": "{title} - chunk {chunk}"
+    },
+    "page": {
+      "none": "N/A"
+    }
   },
   "settings": {
     "title": "Settings",

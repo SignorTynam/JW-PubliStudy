@@ -70,9 +70,12 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        self._navigation = SidebarNavigation(translations)
+        self._navigation = SidebarNavigation(translations, ai_status_provider=self._ai_client.status)
         self._navigation.page_selected.connect(self._show_page)
         root_layout.addWidget(self._navigation)
+        self._ai_setup_service.status_changed.connect(lambda _code: self._navigation.update_ai_status())
+        self._ai_setup_service.error_occurred.connect(lambda _code: self._navigation.update_ai_status())
+        self._ai_setup_service.finished.connect(self._navigation.update_ai_status)
 
         content_root = QWidget()
         content_root.setObjectName("ContentRoot")
@@ -88,10 +91,13 @@ class MainWindow(QMainWindow):
         self._top_bar_title.setObjectName("TopBarTitle")
         top_bar_layout.addWidget(self._top_bar_title)
         top_bar_layout.addStretch(1)
+        self._top_bar_privacy = QLabel()
+        self._top_bar_privacy.setObjectName("TopBarPrivacy")
+        top_bar_layout.addWidget(self._top_bar_privacy)
         content_layout.addWidget(top_bar)
 
         self._stack = QStackedWidget()
-        self._home_page = HomePage(translations)
+        self._home_page = HomePage(translations, self._publication_repository, self._ai_client)
         self._publications_page = PublicationsPage(
             translations,
             self._publication_repository,
@@ -117,6 +123,7 @@ class MainWindow(QMainWindow):
             self._ai_setup_service,
         )
         self._settings_page.language_changed.connect(self._change_language)
+        self._home_page.action_requested.connect(self._show_page)
         self._study_page.configure_ai_requested.connect(lambda: self._show_page("settings"))
 
         self._pages = (
@@ -144,10 +151,13 @@ class MainWindow(QMainWindow):
         self._stack.setCurrentIndex(index)
         if page_id == "study":
             self._study_page.refresh_sources()
+        if page_id == "home":
+            self._home_page.refresh_dashboard()
         if page_id == "publications":
             self._publications_page.refresh_publications()
         if page_id == "settings":
             self._settings_page.refresh_stats()
+        self._navigation.update_ai_status()
         self._top_bar_title.setText(self._translations.t(self.PAGE_TITLE_KEYS[page_id]))
 
     def _change_language(self, language: str) -> None:
@@ -161,6 +171,7 @@ class MainWindow(QMainWindow):
         for page in self._pages:
             page.update_texts()
         self._top_bar_title.setText(self._translations.t(self.PAGE_TITLE_KEYS[self._current_page]))
+        self._top_bar_privacy.setText(self._translations.t("nav.local_only"))
 
     def _center_on_screen(self) -> None:
         screen = QGuiApplication.primaryScreen()

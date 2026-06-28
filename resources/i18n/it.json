@@ -17,17 +17,45 @@
     "open": "Apri",
     "refresh": "Aggiorna",
     "processing": "Elaborazione...",
-    "warning": "Attenzione"
+    "warning": "Attenzione",
+    "unavailable": "Non disponibile"
   },
   "nav": {
     "home": "Home",
     "publications": "Pubblicazioni",
     "study": "Studio / Chat",
-    "settings": "Impostazioni"
+    "settings": "Impostazioni",
+    "version": "Versione {version}",
+    "local_only": "Solo locale",
+    "ai_status_label": "Stato AI locale"
   },
   "home": {
     "title": "JW PubliStudy",
     "subtitle": "Una base desktop locale per organizzare lo studio di pubblicazioni personali. In questa fase l'app prepara navigazione, impostazioni e struttura per le funzioni future.",
+    "hero": {
+      "title": "Studia le tue pubblicazioni con AI locale",
+      "subtitle": "Un workspace locale per importare fonti, indicizzarle, cercare nei testi e preparare risposte con riferimenti chiari."
+    },
+    "quick_actions": {
+      "title": "Azioni rapide",
+      "import": "Importa",
+      "index": "Indicizza",
+      "chat": "Vai alla Chat",
+      "configure_ai": "Configura AI"
+    },
+    "status": {
+      "publications": "Pubblicazioni locali",
+      "indexed": "Pubblicazioni indicizzate",
+      "chunks": "Blocchi disponibili",
+      "ai": "Stato AI"
+    },
+    "guide": {
+      "title": "Come iniziare",
+      "import": "1. Importa una pubblicazione PDF o TXT.",
+      "index": "2. Indicizza il testo per prepararlo alla ricerca.",
+      "configure": "3. Configura l'AI locale dalle Impostazioni.",
+      "ask": "4. Fai domande usando fonti e riferimenti locali."
+    },
     "card": {
       "import": {
         "title": "Carica pubblicazioni",
@@ -84,6 +112,12 @@
     },
     "status_tooltip": {
       "error": "Errore indicizzazione: {error}"
+    },
+    "stats": {
+      "total": "Pubblicazioni totali",
+      "indexed": "Indicizzate",
+      "errors": "Con errore",
+      "chunks": "Blocchi indicizzati"
     },
     "table": {
       "title": "Titolo",
@@ -467,7 +501,7 @@
       "model_download_failed": "Download del modello non riuscito."
     },
     "ai_local_files_section": "Configurazione locale da file",
-    "ai_local_files_description": "Usa un modello .gguf e un runtime AI gia scaricati sul PC per testare la modalita automatica senza LM Studio o Ollama.",
+    "ai_local_files_description": "Opzione per test e sviluppo: usa un modello .gguf e un runtime AI gia scaricati sul PC senza LM Studio o Ollama.",
     "ai_selected_local_model": "Modello locale selezionato",
     "ai_selected_runtime": "Runtime AI selezionato",
     "ai_select_gguf_model": "Seleziona modello .gguf",

@@ -17,17 +17,45 @@
     "open": "Open",
     "refresh": "Refresh",
     "processing": "Processing...",
-    "warning": "Warning"
+    "warning": "Warning",
+    "unavailable": "Unavailable"
   },
   "nav": {
     "home": "Home",
     "publications": "Publications",
     "study": "Study / Chat",
-    "settings": "Settings"
+    "settings": "Settings",
+    "version": "Version {version}",
+    "local_only": "Local only",
+    "ai_status_label": "Local AI status"
   },
   "home": {
     "title": "JW PubliStudy",
     "subtitle": "A local desktop foundation for organizing the study of personal publications. In this phase the app prepares navigation, settings, and structure for future features.",
+    "hero": {
+      "title": "Study your publications with local AI",
+      "subtitle": "A local workspace to import sources, index them, search text, and prepare answers with clear references."
+    },
+    "quick_actions": {
+      "title": "Quick actions",
+      "import": "Import",
+      "index": "Index",
+      "chat": "Go to Chat",
+      "configure_ai": "Configure AI"
+    },
+    "status": {
+      "publications": "Local publications",
+      "indexed": "Indexed publications",
+      "chunks": "Available chunks",
+      "ai": "AI status"
+    },
+    "guide": {
+      "title": "How to start",
+      "import": "1. Import a PDF or TXT publication.",
+      "index": "2. Index the text to prepare it for search.",
+      "configure": "3. Configure local AI from Settings.",
+      "ask": "4. Ask questions using local sources and references."
+    },
     "card": {
       "import": {
         "title": "Load publications",
@@ -84,6 +112,12 @@
     },
     "status_tooltip": {
       "error": "Indexing error: {error}"
+    },
+    "stats": {
+      "total": "Total publications",
+      "indexed": "Indexed",
+      "errors": "Errors",
+      "chunks": "Indexed chunks"
     },
     "table": {
       "title": "Title",
@@ -467,7 +501,7 @@
       "model_download_failed": "Model download failed."
     },
     "ai_local_files_section": "Local file configuration",
-    "ai_local_files_description": "Use a .gguf model and AI runtime already downloaded on this PC to test automatic mode without LM Studio or Ollama.",
+    "ai_local_files_description": "Developer/test option: use a .gguf model and AI runtime already downloaded on this PC without LM Studio or Ollama.",
     "ai_selected_local_model": "Selected local model",
     "ai_selected_runtime": "Selected AI runtime",
     "ai_select_gguf_model": "Select .gguf model",

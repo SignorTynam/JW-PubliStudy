@@ -31,6 +31,7 @@ from app.services.publication_repository import (
     PublicationRepository,
     UnsupportedFileTypeError,
 )
+from app.ui.components import metric_card
 
 
 class ImportPublicationDialog(QDialog):
@@ -186,6 +187,7 @@ class PublicationsPage(QWidget):
         self._indexing_service = indexing_service
         self._selected_publication_id: str | None = None
         self._is_busy = False
+        self._metric_labels: list[tuple[QLabel, QLabel, str]] = []
 
         self.setObjectName("Page")
         layout = QVBoxLayout(self)
@@ -214,6 +216,19 @@ class PublicationsPage(QWidget):
         self._index_all_button.clicked.connect(self._index_all_publications)
         header_layout.addWidget(self._index_all_button, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(header_layout)
+
+        stats_layout = QHBoxLayout()
+        stats_layout.setSpacing(14)
+        for key in (
+            "publications.stats.total",
+            "publications.stats.indexed",
+            "publications.stats.errors",
+            "publications.stats.chunks",
+        ):
+            card, _card_layout, value, label = metric_card()
+            self._metric_labels.append((value, label, key))
+            stats_layout.addWidget(card)
+        layout.addLayout(stats_layout)
 
         filters_frame = QFrame()
         filters_frame.setObjectName("ToolbarFrame")
@@ -300,6 +315,7 @@ class PublicationsPage(QWidget):
         self._populate_combo(self._type_filter, self.TYPE_FILTERS, selected_type)
         self._populate_combo(self._status_filter, self.STATUS_FILTERS, selected_status)
         self._table.setHorizontalHeaderLabels([self._translations.t(key) for key in self.TABLE_HEADERS])
+        self._refresh_metrics()
         self._refresh_table()
 
     def _create_filter_combo(self) -> QComboBox:
@@ -491,6 +507,7 @@ class PublicationsPage(QWidget):
     def _refresh_table(self, publication_id_to_select: str | None = None) -> None:
         self._table.setSortingEnabled(False)
         self._table.setRowCount(0)
+        self._refresh_metrics()
 
         publications = self._filtered_publications()
         for row, publication in enumerate(publications):
@@ -503,6 +520,18 @@ class PublicationsPage(QWidget):
             self._select_publication(publication_id_to_select)
         self._update_empty_state()
         self._on_selection_changed()
+
+    def _refresh_metrics(self) -> None:
+        publications = self._repository.list_publications()
+        values = (
+            str(len(publications)),
+            str(sum(1 for publication in publications if publication.status == "indexed")),
+            str(sum(1 for publication in publications if publication.status == "error")),
+            str(sum(publication.chunk_count for publication in publications)),
+        )
+        for (value_label, label, key), value in zip(self._metric_labels, values):
+            value_label.setText(value)
+            label.setText(self._translations.t(key))
 
     def _set_row(self, row: int, publication: Publication) -> None:
         values = (

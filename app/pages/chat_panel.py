@@ -88,17 +88,24 @@ class ChatPanel(QWidget):
         model_frame = QFrame()
         model_frame.setObjectName("ModelStatus")
         model_layout = QHBoxLayout(model_frame)
-        model_layout.setContentsMargins(14, 12, 14, 12)
-        model_layout.setSpacing(10)
+        model_layout.setContentsMargins(16, 14, 16, 14)
+        model_layout.setSpacing(12)
+        model_text_layout = QVBoxLayout()
+        model_text_layout.setSpacing(6)
         self._model_status = QLabel()
-        self._model_status.setWordWrap(True)
+        self._model_status.setObjectName("StatusBadge")
+        self._model_status_detail = QLabel()
+        self._model_status_detail.setObjectName("DetailMeta")
+        self._model_status_detail.setWordWrap(True)
+        model_text_layout.addWidget(self._model_status, 0, Qt.AlignmentFlag.AlignLeft)
+        model_text_layout.addWidget(self._model_status_detail)
         self._test_connection_button = QPushButton()
         self._test_connection_button.setObjectName("SecondaryButton")
         self._test_connection_button.clicked.connect(self._test_connection)
         self._configure_ai_button = QPushButton()
         self._configure_ai_button.setObjectName("PrimaryButton")
         self._configure_ai_button.clicked.connect(self.configure_ai_requested.emit)
-        model_layout.addWidget(self._model_status, 1)
+        model_layout.addLayout(model_text_layout, 1)
         model_layout.addWidget(self._configure_ai_button)
         model_layout.addWidget(self._test_connection_button)
         layout.addWidget(model_frame)
@@ -333,13 +340,54 @@ class ChatPanel(QWidget):
     def _history_css(self) -> str:
         return """
         <style>
-        body { font-family: Segoe UI, Arial, sans-serif; color: #172033; }
-        .user-message, .assistant-message, .sources { border: 1px solid #dbe3ee; border-radius: 8px; padding: 10px; margin: 8px 0; }
-        .user-message { background: #eef6ff; }
-        .assistant-message { background: #ffffff; }
-        .sources { background: #f8fafc; color: #5e6b80; }
-        .sources span { color: #66758a; }
-        .empty { color: #5e6b80; }
+        body {
+            font-family: Segoe UI, Arial, sans-serif;
+            color: #0f172a;
+            background: #f8fafc;
+            line-height: 1.45;
+        }
+        .user-message, .assistant-message, .sources {
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 13px 15px;
+            margin: 10px 0;
+        }
+        .user-message {
+            background: #dbeafe;
+            border-color: #bfdbfe;
+            margin-left: 44px;
+        }
+        .assistant-message {
+            background: #ffffff;
+            margin-right: 28px;
+        }
+        .user-message b, .assistant-message b {
+            color: #334155;
+            font-size: 12px;
+        }
+        .user-message p, .assistant-message p {
+            margin: 8px 0 0 0;
+            font-size: 14px;
+        }
+        .sources {
+            background: #f8fafc;
+            color: #475569;
+            margin-right: 28px;
+        }
+        .sources ul {
+            margin: 8px 0 0 0;
+            padding-left: 0;
+            list-style: none;
+        }
+        .sources li {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px;
+            margin: 8px 0;
+        }
+        .sources span { color: #64748b; }
+        .empty { color: #64748b; padding: 18px; }
         </style>
         """
 
@@ -396,16 +444,22 @@ class ChatPanel(QWidget):
         if self._settings.ai_mode() == "manual":
             endpoint = self._settings.ai_manual_endpoint_url()
             model = self._settings.ai_manual_model_name()
-            self._model_status.setText(
+            self._model_status.setText(self._translations.t("settings.ai_status_values.manual_mode"))
+            self._model_status.setProperty("status", "manual_mode")
+            self._model_status_detail.setText(
                 f"{self._translations.t('chat.manual_mode_active')} | {self._translations.t('chat.model.endpoint')}: {endpoint} | {self._translations.t('chat.model.model')}: {model}"
             )
             self._configure_ai_button.setVisible(True)
             self._privacy_warning.setVisible(bool(endpoint and not is_local_endpoint(endpoint)))
         else:
-            self._model_status.setText(self._translations.t(f"chat.ai_status.{status}"))
+            self._model_status.setText(self._translations.t(f"settings.ai_status_values.{status}"))
+            self._model_status.setProperty("status", status)
+            self._model_status_detail.setText(self._translations.t(f"chat.ai_status.{status}"))
             self._configure_ai_button.setVisible(status != AIStatus.READY)
             self._privacy_warning.setVisible(False)
         self._privacy_warning.setText(self._translations.t("chat.remote_endpoint_warning"))
+        self._model_status.style().unpolish(self._model_status)
+        self._model_status.style().polish(self._model_status)
 
     def _set_busy(self, is_busy: bool) -> None:
         self._is_busy = is_busy

@@ -17,17 +17,45 @@
     "open": "Hap",
     "refresh": "Rifresko",
     "processing": "Duke punuar...",
-    "warning": "Kujdes"
+    "warning": "Kujdes",
+    "unavailable": "Jo e disponueshme"
   },
   "nav": {
     "home": "Kreu",
     "publications": "Botime",
     "study": "Studim / Chat",
-    "settings": "Cilesimet"
+    "settings": "Cilesimet",
+    "version": "Versioni {version}",
+    "local_only": "Vetem lokal",
+    "ai_status_label": "Statusi i AI lokale"
   },
   "home": {
     "title": "JW PubliStudy",
     "subtitle": "Nje baze desktop lokale per te organizuar studimin e botimeve personale. Ne kete faze aplikacioni pergatit navigimin, cilesimet dhe strukturen per funksionet e ardhshme.",
+    "hero": {
+      "title": "Studio botimet e tua me AI lokale",
+      "subtitle": "Nje workspace lokal per te importuar burime, per t'i indeksuar, per te kerkuar ne tekst dhe per te pergatitur pergjigje me referenca te qarta."
+    },
+    "quick_actions": {
+      "title": "Veprime te shpejta",
+      "import": "Importo",
+      "index": "Indekso",
+      "chat": "Shko te Chat",
+      "configure_ai": "Konfiguro AI"
+    },
+    "status": {
+      "publications": "Botime lokale",
+      "indexed": "Botime te indeksuara",
+      "chunks": "Blloqe te disponueshme",
+      "ai": "Statusi i AI"
+    },
+    "guide": {
+      "title": "Si te fillosh",
+      "import": "1. Importo nje botim PDF ose TXT.",
+      "index": "2. Indekso tekstin per ta pergatitur per kerkim.",
+      "configure": "3. Konfiguro AI lokale nga Cilesimet.",
+      "ask": "4. Bej pyetje duke perdorur burime dhe referenca lokale."
+    },
     "card": {
       "import": {
         "title": "Ngarko botime",
@@ -84,6 +112,12 @@
     },
     "status_tooltip": {
       "error": "Gabim indeksimi: {error}"
+    },
+    "stats": {
+      "total": "Botime gjithsej",
+      "indexed": "Te indeksuara",
+      "errors": "Me gabim",
+      "chunks": "Blloqe te indeksuara"
     },
     "table": {
       "title": "Titulli",
@@ -467,7 +501,7 @@
       "model_download_failed": "Shkarkimi i modelit deshtoi."
     },
     "ai_local_files_section": "Konfigurim lokal nga skedare",
-    "ai_local_files_description": "Perdor nje model .gguf dhe runtime AI te shkarkuar ne kete PC per te testuar modalitetin automatik pa LM Studio ose Ollama.",
+    "ai_local_files_description": "Opsion per test dhe zhvillim: perdor nje model .gguf dhe runtime AI te shkarkuar ne kete PC pa LM Studio ose Ollama.",
     "ai_selected_local_model": "Modeli lokal i zgjedhur",
     "ai_selected_runtime": "Runtime AI i zgjedhur",
     "ai_select_gguf_model": "Zgjidh model .gguf",

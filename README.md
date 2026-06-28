@@ -106,6 +106,18 @@ La fase 5 non scarica modelli, non usa cloud di default, non implementa embeddin
 - Migliorie UX in Pubblicazioni, Ricerca e Chat
 - Script Windows semplici per avvio e setup sviluppo
 
+## Aggiornamento UI/UX premium
+
+- Design system centralizzato in `app/theme.py` con palette chiara, sidebar scura, card, badge, pulsanti, input, tabelle e scrollbar coerenti
+- Dashboard Home con hero, azioni rapide, metriche locali e guida iniziale
+- Sidebar piu curata con versione app e stato AI locale sempre visibile
+- Top bar con indicazione privacy/local-first
+- Pubblicazioni con statistiche rapide e tabella piu leggibile
+- Ricerca e Chat con layout piu ordinato, stato AI in badge, composer e fonti piu leggibili
+- Impostazioni AI rese piu chiare, con configurazione locale da file presentata come opzione per test e sviluppo
+
+Questo aggiornamento non cambia la logica AI/RAG, non aggiunge dipendenze e non introduce cloud o servizi esterni obbligatori.
+
 ## AI locale automatica
 
 JW PubliStudy prepara una configurazione AI locale gestita dall'app:

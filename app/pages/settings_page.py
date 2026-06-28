@@ -217,6 +217,7 @@ class SettingsPage(QWidget):
         layout.addWidget(self._ai_title)
         layout.addWidget(self._ai_description)
         self._ai_status_title, self._ai_status_value = self._summary_row(layout)
+        self._ai_status_value.setObjectName("StatusBadge")
         self._recommended_model_title, self._recommended_model_value = self._summary_row(layout)
         self._installed_model_title, self._installed_model_value = self._summary_row(layout)
         self._required_space_title, self._required_space_value = self._summary_row(layout)
@@ -251,7 +252,7 @@ class SettingsPage(QWidget):
         layout.addLayout(buttons)
 
         local_files = QFrame()
-        local_files.setObjectName("ToolbarFrame")
+        local_files.setObjectName("SectionCard")
         local_files_layout = QVBoxLayout(local_files)
         self._local_files_title = self._section_title()
         self._local_files_description = self._section_description()
@@ -283,7 +284,7 @@ class SettingsPage(QWidget):
         layout.addWidget(local_files)
 
         advanced = QFrame()
-        advanced.setObjectName("ToolbarFrame")
+        advanced.setObjectName("SectionCard")
         advanced_layout = QVBoxLayout(advanced)
         self._advanced_title = self._section_title()
         self._advanced_description = self._section_description()
@@ -567,7 +568,11 @@ class SettingsPage(QWidget):
         self._recommended_model = recommend_model(info.total_ram_gb)
         selected = self._selected_model_or_fallback()
         state = self._model_manager.get_custom_model_state(self._settings.ai_custom_model_path()) if self._settings.ai_use_custom_model() else self._model_manager.get_local_state(selected)
-        self._ai_status_value.setText(self._translations.t(f"settings.ai_status_values.{self._llm_client.status()}"))
+        ai_status = self._llm_client.status()
+        self._ai_status_value.setText(self._translations.t(f"settings.ai_status_values.{ai_status}"))
+        self._ai_status_value.setProperty("status", ai_status)
+        self._ai_status_value.style().unpolish(self._ai_status_value)
+        self._ai_status_value.style().polish(self._ai_status_value)
         self._recommended_model_value.setText(self._recommended_model.display_name)
         installed_model = self._settings.ai_custom_model_display_name() if self._settings.ai_use_custom_model() and state.verified else selected.display_name
         self._installed_model_value.setText(installed_model if state.verified else self._translations.t("settings.ai_no_model_installed"))

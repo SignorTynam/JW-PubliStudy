@@ -44,3 +44,7 @@ class AppPaths:
     @property
     def index_manifest_file(self) -> Path:
         return self.index_dir / "index_manifest.json"
+
+    @property
+    def chat_history_file(self) -> Path:
+        return self.app_data_dir / "chat_history.json"

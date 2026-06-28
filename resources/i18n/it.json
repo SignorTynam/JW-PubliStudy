@@ -5,7 +5,13 @@
   "common": {
     "ok": "OK",
     "cancel": "Annulla",
-    "close": "Chiudi"
+    "close": "Chiudi",
+    "yes": "Si",
+    "no": "No",
+    "confirm": "Conferma",
+    "error": "Errore",
+    "success": "Operazione completata",
+    "copy": "Copia"
   },
   "nav": {
     "home": "Home",
@@ -134,6 +140,10 @@
   },
   "study": {
     "title": "Studio / Chat",
+    "tabs": {
+      "search": "Ricerca nelle fonti",
+      "chat": "Chat AI locale"
+    },
     "description": "Cerca nelle fonti indicizzate della tua libreria locale. In questa fase la ricerca e testuale e non usa AI.",
     "search": {
       "placeholder": "Cerca nelle pubblicazioni indicizzate...",
@@ -187,6 +197,54 @@
       "none": "N/D"
     }
   },
+  "chat": {
+    "title": "Chat AI locale",
+    "description": "Fai domande usando solo pubblicazioni indicizzate e un modello locale configurato. Le fonti recuperate vengono mostrate sotto ogni risposta.",
+    "sources_status": {
+      "available": "Pubblicazioni indicizzate disponibili: {count}",
+      "none": "Nessuna pubblicazione indicizzata. Prima indicizza almeno una pubblicazione."
+    },
+    "input": {
+      "placeholder": "Scrivi una domanda sulle pubblicazioni indicizzate..."
+    },
+    "send": "Invia",
+    "clear": "Pulisci chat",
+    "copy_last_answer": "Copia ultima risposta",
+    "empty": "La cronologia e vuota. Scrivi una domanda per iniziare.",
+    "user_label": "Tu",
+    "assistant_label": "Assistente",
+    "sources_title": "Fonti usate",
+    "no_sources": "Nessuna fonte usata.",
+    "insufficient_sources": "Non ci sono informazioni sufficienti nelle pubblicazioni indicizzate per rispondere.",
+    "local_model_error": "Non riesco a contattare il modello AI locale. Controlla che il server locale sia avviato e che endpoint/modello siano corretti.",
+    "busy": "Generazione risposta in corso...",
+    "answer_copied": "Ultima risposta copiata negli appunti.",
+    "history_cleared": "Cronologia chat cancellata.",
+    "confirm_clear_title": "Pulisci chat",
+    "confirm_clear_message": "Vuoi cancellare tutta la cronologia chat locale?",
+    "filters": {
+      "language": "Lingua",
+      "publication": "Pubblicazione",
+      "sources_count": "Fonti",
+      "all_languages": "Tutte",
+      "all_publications": "Tutte le pubblicazioni indicizzate"
+    },
+    "model": {
+      "status_title": "Modello locale",
+      "endpoint": "Endpoint",
+      "model": "Modello",
+      "test_connection": "Test connessione",
+      "connection_success": "Connessione al modello locale riuscita.",
+      "connection_failed": "Connessione al modello locale fallita.",
+      "not_configured": "Endpoint non configurato"
+    }
+  },
+  "rag": {
+    "insufficient_sources": "Non ci sono informazioni sufficienti nelle pubblicazioni indicizzate per rispondere.",
+    "empty_question": "Scrivi una domanda prima di inviare.",
+    "llm_error": "Non riesco a contattare il modello AI locale.",
+    "no_indexed_publications": "Non ci sono pubblicazioni indicizzate disponibili."
+  },
   "settings": {
     "title": "Impostazioni",
     "language": "Lingua",
@@ -195,6 +253,24 @@
       "it": "Italiano",
       "al": "Shqip",
       "en": "English"
+    },
+    "ai_section": "Modello AI locale",
+    "ai_description": "Configura un server locale compatibile OpenAI Chat Completions. L'app non scarica modelli e non usa cloud di default.",
+    "ai": {
+      "endpoint": "Endpoint URL",
+      "model": "Nome modello",
+      "temperature": "Temperature",
+      "max_tokens": "Max tokens",
+      "timeout": "Timeout secondi",
+      "retrieval_limit": "Numero fonti predefinito",
+      "save": "Salva impostazioni AI",
+      "reset_defaults": "Ripristina predefiniti",
+      "test_connection": "Test connessione",
+      "saved": "Impostazioni AI salvate.",
+      "reset_done": "Impostazioni AI ripristinate ai valori predefiniti.",
+      "invalid_values": "Controlla i valori inseriti.",
+      "connection_success": "Connessione al modello locale riuscita.",
+      "connection_failed": "Connessione al modello locale fallita."
     }
   }
 }

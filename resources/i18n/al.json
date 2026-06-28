@@ -5,7 +5,13 @@
   "common": {
     "ok": "OK",
     "cancel": "Anulo",
-    "close": "Mbyll"
+    "close": "Mbyll",
+    "yes": "Po",
+    "no": "Jo",
+    "confirm": "Konfirmo",
+    "error": "Gabim",
+    "success": "Veprimi u krye",
+    "copy": "Kopjo"
   },
   "nav": {
     "home": "Kreu",
@@ -134,6 +140,10 @@
   },
   "study": {
     "title": "Studim / Chat",
+    "tabs": {
+      "search": "Kerkim ne burime",
+      "chat": "Chat AI lokal"
+    },
     "description": "Kerko ne burimet e indeksuara te bibliotekes lokale. Ne kete faze kerkimi eshte tekstual dhe nuk perdor AI.",
     "search": {
       "placeholder": "Kerko ne botimet e indeksuara...",
@@ -187,6 +197,54 @@
       "none": "N/A"
     }
   },
+  "chat": {
+    "title": "Chat AI lokal",
+    "description": "Bej pyetje duke perdorur vetem botime te indeksuara dhe modelin lokal te konfiguruar. Burimet e gjetura shfaqen poshte cdo pergjigjeje.",
+    "sources_status": {
+      "available": "Botime te indeksuara te disponueshme: {count}",
+      "none": "Nuk ka botime te indeksuara. Indekso te pakten nje botim me pare."
+    },
+    "input": {
+      "placeholder": "Shkruaj nje pyetje per botimet e indeksuara..."
+    },
+    "send": "Dergo",
+    "clear": "Pastro chat",
+    "copy_last_answer": "Kopjo pergjigjen e fundit",
+    "empty": "Historia e chat-it eshte bosh. Shkruaj nje pyetje per te filluar.",
+    "user_label": "Ti",
+    "assistant_label": "Asistenti",
+    "sources_title": "Burime te perdorura",
+    "no_sources": "Nuk u perdor asnje burim.",
+    "insufficient_sources": "Nuk ka informacion te mjaftueshem ne botimet e indeksuara per te dhene pergjigje.",
+    "local_model_error": "Nuk mund te kontaktoj modelin AI lokal. Kontrollo qe serveri lokal eshte nisur dhe endpoint/modeli jane te sakta.",
+    "busy": "Pergjigjja po gjenerohet...",
+    "answer_copied": "Pergjigjja e fundit u kopjua ne clipboard.",
+    "history_cleared": "Historia e chat-it u fshi.",
+    "confirm_clear_title": "Pastro chat",
+    "confirm_clear_message": "Deshiron te fshish historine lokale te chat-it?",
+    "filters": {
+      "language": "Gjuha",
+      "publication": "Botimi",
+      "sources_count": "Burime",
+      "all_languages": "Te gjitha",
+      "all_publications": "Te gjitha botimet e indeksuara"
+    },
+    "model": {
+      "status_title": "Model lokal",
+      "endpoint": "Endpoint",
+      "model": "Modeli",
+      "test_connection": "Testo lidhjen",
+      "connection_success": "Lidhja me modelin lokal pati sukses.",
+      "connection_failed": "Lidhja me modelin lokal deshtoi.",
+      "not_configured": "Endpoint nuk eshte konfiguruar"
+    }
+  },
+  "rag": {
+    "insufficient_sources": "Nuk ka informacion te mjaftueshem ne botimet e indeksuara per te dhene pergjigje.",
+    "empty_question": "Shkruaj nje pyetje para se ta dergosh.",
+    "llm_error": "Nuk mund te kontaktoj modelin AI lokal.",
+    "no_indexed_publications": "Nuk ka botime te indeksuara te disponueshme."
+  },
   "settings": {
     "title": "Cilesimet",
     "language": "Gjuha",
@@ -195,6 +253,24 @@
       "it": "Italiano",
       "al": "Shqip",
       "en": "English"
+    },
+    "ai_section": "Model AI lokal",
+    "ai_description": "Konfiguro nje server lokal te perputhshem me OpenAI Chat Completions. Aplikacioni nuk shkarkon modele dhe nuk perdor cloud si parazgjedhje.",
+    "ai": {
+      "endpoint": "Endpoint URL",
+      "model": "Emri i modelit",
+      "temperature": "Temperature",
+      "max_tokens": "Max tokens",
+      "timeout": "Timeout sekonda",
+      "retrieval_limit": "Numri i parazgjedhur i burimeve",
+      "save": "Ruaj cilesimet AI",
+      "reset_defaults": "Rikthe parazgjedhjet",
+      "test_connection": "Testo lidhjen",
+      "saved": "Cilesimet AI u ruajten.",
+      "reset_done": "Cilesimet AI u rikthyen ne vlerat e parazgjedhura.",
+      "invalid_values": "Kontrollo vlerat e futura.",
+      "connection_success": "Lidhja me modelin lokal pati sukses.",
+      "connection_failed": "Lidhja me modelin lokal deshtoi."
     }
   }
 }

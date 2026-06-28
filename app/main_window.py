@@ -10,9 +10,12 @@ from app.pages.home_page import HomePage
 from app.pages.publications_page import PublicationsPage
 from app.pages.settings_page import SettingsPage
 from app.pages.study_page import StudyPage
+from app.services.chat_history_repository import ChatHistoryRepository
 from app.services.index_repository import IndexRepository
 from app.services.indexing_service import IndexingService
+from app.services.local_llm_client import LocalLLMClient
 from app.services.publication_repository import PublicationRepository
+from app.services.rag_service import RagService
 from app.services.search_service import SearchService
 from app.settings import AppSettings
 
@@ -40,6 +43,9 @@ class MainWindow(QMainWindow):
         self._index_repository = IndexRepository(self._publication_repository.paths)
         self._indexing_service = IndexingService(self._publication_repository, self._index_repository)
         self._search_service = SearchService(self._publication_repository, self._index_repository)
+        self._llm_client = LocalLLMClient()
+        self._rag_service = RagService(self._search_service, self._llm_client)
+        self._chat_history_repository = ChatHistoryRepository(self._publication_repository.paths)
         self._current_page = "home"
 
         self.resize(1100, 720)
@@ -81,8 +87,12 @@ class MainWindow(QMainWindow):
             translations,
             self._publication_repository,
             self._search_service,
+            self._rag_service,
+            self._chat_history_repository,
+            self._settings,
+            self._llm_client,
         )
-        self._settings_page = SettingsPage(translations)
+        self._settings_page = SettingsPage(translations, self._settings, self._llm_client)
         self._settings_page.language_changed.connect(self._change_language)
 
         self._pages = (

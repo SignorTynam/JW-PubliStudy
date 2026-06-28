@@ -174,6 +174,28 @@ def apply_theme(app: QApplication) -> None:
             border-radius: 8px;
         }
 
+        QTabWidget#StudyTabs::pane {
+            border: none;
+            background: #f6f7f9;
+        }
+
+        QTabBar::tab {
+            background: #e9eef5;
+            color: #44546a;
+            border: 1px solid #d5deeb;
+            border-bottom: none;
+            padding: 10px 16px;
+            margin-right: 4px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            font-weight: 700;
+        }
+
+        QTabBar::tab:selected {
+            background: #ffffff;
+            color: #172033;
+        }
+
         QComboBox,
         QComboBox#FilterCombo {
             background: #ffffff;
@@ -216,6 +238,19 @@ def apply_theme(app: QApplication) -> None:
             border-color: #1d4f8f;
         }
 
+        QTextEdit#ChatInput {
+            background: #ffffff;
+            border: 1px solid #cfd8e5;
+            border-radius: 8px;
+            padding: 10px;
+            color: #172033;
+            font-size: 14px;
+        }
+
+        QTextEdit#ChatInput:focus {
+            border-color: #1d4f8f;
+        }
+
         QDialog,
         QMessageBox {
             background: #f6f7f9;
@@ -243,6 +278,13 @@ def apply_theme(app: QApplication) -> None:
             border-radius: 8px;
         }
 
+        QFrame#ModelStatus,
+        QFrame#SettingsSection {
+            background: #ffffff;
+            border: 1px solid #e1e6ee;
+            border-radius: 8px;
+        }
+
         QLabel#DetailTitle {
             background: transparent;
             color: #172033;
@@ -256,13 +298,31 @@ def apply_theme(app: QApplication) -> None:
             font-size: 13px;
         }
 
-        QTextEdit#ChunkText {
+        QLabel#SectionTitle {
+            background: transparent;
+            color: #172033;
+            font-size: 18px;
+            font-weight: 750;
+        }
+
+        QLabel#SectionDescription {
+            background: transparent;
+            color: #5e6b80;
+            font-size: 14px;
+        }
+
+        QTextEdit#ChunkText,
+        QTextBrowser#ChatHistory {
             background: #f8fafc;
             border: 1px solid #dbe3ee;
             border-radius: 8px;
             padding: 10px;
             color: #172033;
             font-size: 14px;
+        }
+
+        QWidget#ChatPanel {
+            background: #f6f7f9;
         }
 
         QHeaderView::section {

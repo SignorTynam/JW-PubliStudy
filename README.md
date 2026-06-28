@@ -71,6 +71,39 @@ La fase 3 non implementa AI, embeddings, chat, RAG, ricerca semantica o citazion
 
 La fase 4 non implementa AI, embeddings, ricerca vettoriale, RAG, chat con modello locale o generazione di risposte.
 
+## Fase 5 - Chat AI locale con fonti
+
+- Usa le pubblicazioni gia indicizzate come fonti
+- Recupera i chunk piu rilevanti tramite `SearchService`
+- Invia domanda e fonti a un endpoint locale compatibile OpenAI Chat Completions
+- Mostra risposta e fonti usate sotto la risposta
+- Salva la cronologia chat localmente
+- Permette di copiare ultima risposta e riferimenti/fonti
+
+La fase 5 non scarica modelli, non usa cloud di default, non fa scraping, non implementa embeddings e non implementa ricerca vettoriale.
+
+## Configurazione modello locale
+
+Per usare la chat bisogna avviare un server locale compatibile con OpenAI Chat Completions, per esempio LM Studio o un server locale equivalente.
+
+Valori predefiniti:
+
+- Endpoint: `http://localhost:1234/v1/chat/completions`
+- Modello: `local-model`
+
+Endpoint, modello, temperature, max tokens, timeout e numero di fonti si possono modificare nella pagina Impostazioni.
+
+L'app invia domanda e fonti solo all'endpoint configurato. L'endpoint predefinito e locale (`localhost`). Se l'utente inserisce un endpoint remoto, la responsabilita del trattamento dei dati e dell'utente.
+
+## Limiti attuali
+
+- Le risposte dipendono dalla qualita delle fonti indicizzate
+- Se il modello locale non e avviato, la chat non genera risposte
+- La ricerca delle fonti e ancora testuale, non semantica
+- Nessun OCR
+- Nessun cloud usato di default
+- Nessun download automatico di modelli
+
 ## Fasi successive
 
-La fase 5 sara dedicata alla chat AI locale con recupero delle fonti e citazioni. Nelle fasi successive potranno essere aggiunte ricerca semantica, embeddings e integrazioni AI locali.
+Nelle fasi successive potranno essere aggiunti miglioramenti alla qualita del retrieval, ricerca semantica opzionale, embeddings locali e funzioni avanzate di studio.

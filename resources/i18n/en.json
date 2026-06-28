@@ -5,7 +5,13 @@
   "common": {
     "ok": "OK",
     "cancel": "Cancel",
-    "close": "Close"
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "error": "Error",
+    "success": "Operation completed",
+    "copy": "Copy"
   },
   "nav": {
     "home": "Home",
@@ -134,6 +140,10 @@
   },
   "study": {
     "title": "Study / Chat",
+    "tabs": {
+      "search": "Source search",
+      "chat": "Local AI chat"
+    },
     "description": "Search the indexed sources in your local library. In this phase search is text-based and does not use AI.",
     "search": {
       "placeholder": "Search indexed publications...",
@@ -187,6 +197,54 @@
       "none": "N/A"
     }
   },
+  "chat": {
+    "title": "Local AI chat",
+    "description": "Ask questions using only indexed publications and your configured local model. Retrieved sources are shown below each answer.",
+    "sources_status": {
+      "available": "Indexed publications available: {count}",
+      "none": "No indexed publications. Index at least one publication first."
+    },
+    "input": {
+      "placeholder": "Ask a question about indexed publications..."
+    },
+    "send": "Send",
+    "clear": "Clear chat",
+    "copy_last_answer": "Copy last answer",
+    "empty": "Chat history is empty. Ask a question to get started.",
+    "user_label": "You",
+    "assistant_label": "Assistant",
+    "sources_title": "Sources used",
+    "no_sources": "No sources used.",
+    "insufficient_sources": "There is not enough information in the indexed publications to answer.",
+    "local_model_error": "I cannot contact the local AI model. Check that the local server is running and that endpoint/model are correct.",
+    "busy": "Generating answer...",
+    "answer_copied": "Last answer copied to clipboard.",
+    "history_cleared": "Chat history cleared.",
+    "confirm_clear_title": "Clear chat",
+    "confirm_clear_message": "Do you want to delete the local chat history?",
+    "filters": {
+      "language": "Language",
+      "publication": "Publication",
+      "sources_count": "Sources",
+      "all_languages": "All",
+      "all_publications": "All indexed publications"
+    },
+    "model": {
+      "status_title": "Local model",
+      "endpoint": "Endpoint",
+      "model": "Model",
+      "test_connection": "Test connection",
+      "connection_success": "Local model connection succeeded.",
+      "connection_failed": "Local model connection failed.",
+      "not_configured": "Endpoint not configured"
+    }
+  },
+  "rag": {
+    "insufficient_sources": "There is not enough information in the indexed publications to answer.",
+    "empty_question": "Type a question before sending.",
+    "llm_error": "I cannot contact the local AI model.",
+    "no_indexed_publications": "No indexed publications are available."
+  },
   "settings": {
     "title": "Settings",
     "language": "Language",
@@ -195,6 +253,24 @@
       "it": "Italiano",
       "al": "Shqip",
       "en": "English"
+    },
+    "ai_section": "Local AI model",
+    "ai_description": "Configure a local server compatible with OpenAI Chat Completions. The app does not download models and does not use cloud by default.",
+    "ai": {
+      "endpoint": "Endpoint URL",
+      "model": "Model name",
+      "temperature": "Temperature",
+      "max_tokens": "Max tokens",
+      "timeout": "Timeout seconds",
+      "retrieval_limit": "Default source count",
+      "save": "Save AI settings",
+      "reset_defaults": "Restore defaults",
+      "test_connection": "Test connection",
+      "saved": "AI settings saved.",
+      "reset_done": "AI settings restored to defaults.",
+      "invalid_values": "Check the entered values.",
+      "connection_success": "Local model connection succeeded.",
+      "connection_failed": "Local model connection failed."
     }
   }
 }

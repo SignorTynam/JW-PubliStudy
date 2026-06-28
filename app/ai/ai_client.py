@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from app.ai.ai_status import AIStatus
 from app.ai.model_catalog import get_model
 from app.ai.model_manager import ModelManager
@@ -28,6 +30,11 @@ class AIClient:
     def status(self) -> str:
         if self._settings.ai_mode() == "manual":
             return AIStatus.MANUAL_MODE
+        if self._settings.ai_use_custom_model() or self._settings.ai_use_custom_runtime():
+            if not self._settings.ai_use_custom_model() or not self._model_manager.is_custom_model_ready(self._settings.ai_custom_model_path()):
+                return AIStatus.CUSTOM_MODEL_MISSING
+            if not self._settings.ai_use_custom_runtime() or not self._runtime_manager.is_runtime_available():
+                return AIStatus.CUSTOM_RUNTIME_MISSING
         model = get_model(self._settings.ai_selected_model_id()) or get_model("small")
         if model is None:
             return AIStatus.NOT_CONFIGURED
@@ -68,10 +75,17 @@ class AIClient:
         endpoint = self.get_active_endpoint()
         if not endpoint:
             return None
-        model = get_model(self._settings.ai_selected_model_id()) or get_model("small")
+        if self._settings.ai_use_custom_model():
+            custom_name = self._settings.ai_custom_model_display_name()
+            if not custom_name and self._settings.ai_custom_model_path():
+                custom_name = Path(self._settings.ai_custom_model_path()).stem
+            model_name = custom_name or "custom-local-model"
+        else:
+            model = get_model(self._settings.ai_selected_model_id()) or get_model("small")
+            model_name = model.display_name if model else (fallback.model if fallback else "local-model")
         return LLMConfig(
             endpoint_url=endpoint,
-            model=model.display_name if model else (fallback.model if fallback else "local-model"),
+            model=model_name,
             temperature=self._settings.ai_temperature(),
             max_tokens=self._settings.ai_max_tokens(),
             timeout_seconds=self._settings.ai_timeout_seconds(),

@@ -137,6 +137,25 @@ Il binario runtime bundled puo essere messo in `runtime/`, seguendo `runtime/REA
 
 La modalita manuale resta disponibile nelle Impostazioni avanzate per sviluppo o test con server esterni compatibili OpenAI, per esempio LM Studio o Ollama. Non e la modalita richiesta all'utente finale.
 
+## Test AI locale senza LM Studio/Ollama
+
+Per testare subito la modalita automatica con file locali:
+
+1. Scarica manualmente un modello compatibile in formato `.gguf`.
+2. Scarica o compila `llama-server.exe`.
+3. Avvia JW PubliStudy.
+4. Vai in Impostazioni -> AI locale.
+5. Nella sezione "Configurazione locale da file", premi "Seleziona modello .gguf".
+6. Seleziona il file modello scaricato.
+7. Premi "Seleziona runtime AI" e scegli `llama-server.exe`.
+8. Premi "Avvia con file locali".
+9. Importa e indicizza almeno una pubblicazione.
+10. Vai in Studio / Chat e fai una domanda sulle fonti indicizzate.
+
+I file selezionati vengono copiati nella directory dati locale dell'app. Il runtime viene avviato solo su `127.0.0.1` con una porta libera, quindi non viene esposto sulla rete locale. Pubblicazioni, domande, fonti e cronologia non vengono caricati sul cloud.
+
+Questa modalita serve per test e packaging preliminare. Nella distribuzione finale runtime e modello potranno essere inclusi nell'installer oppure scaricati automaticamente da URL reali configurati nel catalogo.
+
 ## Dati locali
 
 JW PubliStudy salva i dati nella directory applicativa dell'utente ottenuta tramite `QStandardPaths.AppDataLocation`, fuori dalla repository Git.

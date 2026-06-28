@@ -267,7 +267,9 @@
       "starting": "Local AI is starting...",
       "ready": "Local AI ready.",
       "failed": "Local AI error.",
-      "manual_mode": "Manual mode active."
+      "manual_mode": "Manual mode active.",
+      "custom_model_missing": "Local AI model is not configured.",
+      "custom_runtime_missing": "Local AI runtime is not configured."
     },
     "ai_status_help": {
       "not_configured": "Local AI is not configured yet. You can configure it automatically from Settings.",
@@ -277,7 +279,9 @@
       "starting": "Local AI is starting...",
       "ready": "Local AI ready.",
       "failed": "Local AI is not ready. Check Settings.",
-      "manual_mode": "Manual mode active."
+      "manual_mode": "Manual mode active.",
+      "custom_model_missing": "The local AI model is not configured. Go to Settings and select a .gguf file or configure automatically.",
+      "custom_runtime_missing": "The local AI runtime is not configured. Go to Settings and select llama-server.exe."
     }
   },
   "rag": {
@@ -405,7 +409,9 @@
       "starting": "Starting",
       "ready": "Ready",
       "failed": "Error",
-      "manual_mode": "Manual mode"
+      "manual_mode": "Manual mode",
+      "custom_model_missing": "Local model missing",
+      "custom_runtime_missing": "Local runtime missing"
     },
     "ai_status_help": {
       "not_configured": "Local AI is not configured yet.",
@@ -415,7 +421,9 @@
       "starting": "Local AI is starting...",
       "ready": "Local AI is ready.",
       "failed": "Local AI has an error.",
-      "manual_mode": "Manual mode is active."
+      "manual_mode": "Manual mode is active.",
+      "custom_model_missing": "The local AI model is not configured. Select a .gguf file or configure automatically.",
+      "custom_runtime_missing": "The local AI runtime is not configured. Select llama-server.exe."
     },
     "ai_status_messages": {
       "checking_hardware": "Checking this computer...",
@@ -425,7 +433,9 @@
       "starting_runtime": "Starting local AI...",
       "ready": "Local AI is ready.",
       "busy": "AI operation in progress...",
-      "model_already_downloaded": "The model is already downloaded and verified."
+      "model_already_downloaded": "The model is already downloaded and verified.",
+      "starting_with_local_files": "Starting local AI with selected files...",
+      "copying_local_file": "Copying local file..."
     },
     "ai_errors": {
       "disk_space_insufficient": "Insufficient disk space.",
@@ -440,7 +450,31 @@
       "start_failed": "The local AI engine could not be started.",
       "readiness_timeout": "Local AI did not respond in time.",
       "download_url_placeholder": "The model catalog still uses a placeholder URL. Add a real URL in app/ai/model_catalog.py before downloading the model.",
-      "http_error": "The model server returned an error. Check that the model URL is correct."
-    }
+      "http_error": "The model server returned an error. Check that the model URL is correct.",
+      "custom_model_missing": "The local AI model is not configured or is no longer available.",
+      "custom_runtime_missing": "The local AI runtime is not configured or is no longer available."
+    },
+    "ai_local_files_section": "Local file configuration",
+    "ai_local_files_description": "Use a .gguf model and AI runtime already downloaded on this PC to test automatic mode without LM Studio or Ollama.",
+    "ai_selected_local_model": "Selected local model",
+    "ai_selected_runtime": "Selected AI runtime",
+    "ai_select_gguf_model": "Select .gguf model",
+    "ai_remove_selected_model": "Remove selected model",
+    "ai_select_runtime": "Select AI runtime",
+    "ai_remove_selected_runtime": "Remove selected runtime",
+    "ai_start_with_local_files": "Start with local files",
+    "ai_model_selected_success": ".gguf model selected successfully.",
+    "ai_runtime_selected_success": "AI runtime selected successfully.",
+    "ai_model_file_missing": "The model file no longer exists.",
+    "ai_runtime_file_missing": "The AI runtime no longer exists.",
+    "ai_invalid_model_file": "Select a valid .gguf model file.",
+    "ai_invalid_runtime_file": "Select a valid AI runtime.",
+    "ai_starting_with_local_files": "Starting local AI with selected files...",
+    "ai_local_files_ready": "Local AI is ready with the selected files.",
+    "ai_no_local_model_selected": "No local model selected",
+    "ai_no_runtime_selected": "No runtime selected",
+    "ai_gguf_filter": "GGUF models (*.gguf)",
+    "ai_runtime_filter_windows": "AI runtime (*.exe)",
+    "ai_runtime_filter_all": "AI runtime (*)"
   }
 }

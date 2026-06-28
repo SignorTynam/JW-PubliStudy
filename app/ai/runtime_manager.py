@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import socket
 import subprocess
+import shutil
 import sys
 import time
 import urllib.error
@@ -47,6 +48,9 @@ class RuntimeManager:
         self._state = RuntimeState("not_installed", None, None, False)
 
     def find_runtime_executable(self) -> Path | None:
+        if self._settings is not None and self._settings.ai_use_custom_runtime():
+            custom_path = Path(self._settings.ai_custom_runtime_path())
+            return custom_path if custom_path.is_file() else None
         candidates = [
             Path.cwd() / "runtime" / DEFAULT_RUNTIME_SPEC.executable_name,
             self._data_dir / "runtime" / DEFAULT_RUNTIME_SPEC.executable_name,
@@ -61,6 +65,26 @@ class RuntimeManager:
 
     def is_runtime_available(self) -> bool:
         return self.find_runtime_executable() is not None
+
+    def import_runtime_executable(self, source_path: Path) -> Path:
+        source = Path(source_path)
+        if sys.platform.startswith("win") and source.suffix.lower() != ".exe":
+            raise ValueError("invalid_runtime_file")
+        if not source.is_file():
+            raise FileNotFoundError("runtime_file_missing")
+        target_dir = self._data_dir / "runtime"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target = target_dir / DEFAULT_RUNTIME_SPEC.executable_name
+        if target.exists() and target.stat().st_size == source.stat().st_size:
+            return target
+        temp_target = target.with_suffix(target.suffix + ".part")
+        try:
+            shutil.copy2(source, temp_target)
+            temp_target.replace(target)
+        except OSError:
+            temp_target.unlink(missing_ok=True)
+            raise
+        return target
 
     def find_free_port(self) -> int:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -144,4 +168,3 @@ class RuntimeManager:
             except (urllib.error.URLError, TimeoutError, OSError):
                 time.sleep(1)
         return False
-

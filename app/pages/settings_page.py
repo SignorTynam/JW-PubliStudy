@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import QUrl, Signal
@@ -8,6 +9,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QFrame,
     QHBoxLayout,
@@ -67,6 +69,7 @@ class SettingsPage(QWidget):
         self._ai_setup_service = ai_setup_service
         self._maintenance_buttons: list[QPushButton] = []
         self._ai_buttons: list[QPushButton] = []
+        self._ai_file_buttons: list[QPushButton] = []
         self._recommended_model: LocalModelSpec | None = None
         self._ai_status_message_key = ""
 
@@ -131,6 +134,15 @@ class SettingsPage(QWidget):
         self._download_model_button.setText(self._translations.t("settings.ai_download_model"))
         self._start_ai_button.setText(self._translations.t("settings.ai_start_local"))
         self._test_ai_button.setText(self._translations.t("settings.ai_test"))
+        self._local_files_title.setText(self._translations.t("settings.ai_local_files_section"))
+        self._local_files_description.setText(self._translations.t("settings.ai_local_files_description"))
+        self._selected_local_model_title.setText(self._translations.t("settings.ai_selected_local_model"))
+        self._selected_runtime_title.setText(self._translations.t("settings.ai_selected_runtime"))
+        self._select_model_button.setText(self._translations.t("settings.ai_select_gguf_model"))
+        self._remove_model_button.setText(self._translations.t("settings.ai_remove_selected_model"))
+        self._select_runtime_button.setText(self._translations.t("settings.ai_select_runtime"))
+        self._remove_runtime_button.setText(self._translations.t("settings.ai_remove_selected_runtime"))
+        self._start_with_local_files_button.setText(self._translations.t("settings.ai_start_with_local_files"))
         self._advanced_title.setText(self._translations.t("settings.ai_advanced_section"))
         self._advanced_description.setText(self._translations.t("settings.ai_advanced_description"))
         self._manual_mode_check.setText(self._translations.t("settings.ai_manual_mode"))
@@ -237,6 +249,38 @@ class SettingsPage(QWidget):
         buttons.addWidget(self._start_ai_button)
         buttons.addWidget(self._test_ai_button)
         layout.addLayout(buttons)
+
+        local_files = QFrame()
+        local_files.setObjectName("ToolbarFrame")
+        local_files_layout = QVBoxLayout(local_files)
+        self._local_files_title = self._section_title()
+        self._local_files_description = self._section_description()
+        local_files_layout.addWidget(self._local_files_title)
+        local_files_layout.addWidget(self._local_files_description)
+        self._selected_local_model_title, self._selected_local_model_value = self._summary_row(local_files_layout)
+        model_buttons = QHBoxLayout()
+        self._select_model_button = self._secondary_button(self._select_custom_model)
+        self._remove_model_button = self._secondary_button(self._remove_custom_model)
+        model_buttons.addWidget(self._select_model_button)
+        model_buttons.addWidget(self._remove_model_button)
+        local_files_layout.addLayout(model_buttons)
+        self._selected_runtime_title, self._selected_runtime_value = self._summary_row(local_files_layout)
+        runtime_buttons = QHBoxLayout()
+        self._select_runtime_button = self._secondary_button(self._select_custom_runtime)
+        self._remove_runtime_button = self._secondary_button(self._remove_custom_runtime)
+        self._start_with_local_files_button = self._primary_button(self._start_with_local_files)
+        runtime_buttons.addWidget(self._select_runtime_button)
+        runtime_buttons.addWidget(self._remove_runtime_button)
+        runtime_buttons.addWidget(self._start_with_local_files_button)
+        local_files_layout.addLayout(runtime_buttons)
+        self._ai_file_buttons = [
+            self._select_model_button,
+            self._remove_model_button,
+            self._select_runtime_button,
+            self._remove_runtime_button,
+            self._start_with_local_files_button,
+        ]
+        layout.addWidget(local_files)
 
         advanced = QFrame()
         advanced.setObjectName("ToolbarFrame")
@@ -426,6 +470,74 @@ class SettingsPage(QWidget):
         self._set_ai_busy(True)
         self._ai_setup_service.start_runtime(spec)
 
+    def _select_custom_model(self) -> None:
+        source_file, _ = QFileDialog.getOpenFileName(
+            self,
+            self._translations.t("settings.ai_select_gguf_model"),
+            str(Path.home()),
+            self._translations.t("settings.ai_gguf_filter"),
+        )
+        if not source_file:
+            return
+        self._set_ai_status_text("settings.ai_status_messages.copying_local_file")
+        try:
+            target = self._model_manager.import_custom_model(Path(source_file))
+        except FileNotFoundError:
+            self._set_ai_status_text("settings.ai_model_file_missing")
+            return
+        except (OSError, ValueError):
+            self._set_ai_status_text("settings.ai_invalid_model_file")
+            return
+        self._settings.set_ai_custom_model_path(str(target))
+        self._settings.set_ai_custom_model_display_name(target.stem)
+        self._settings.set_ai_use_custom_model(True)
+        self._settings.set_ai_mode("auto")
+        self._set_ai_status_text("settings.ai_model_selected_success")
+        self._refresh_ai_summary()
+
+    def _remove_custom_model(self) -> None:
+        self._settings.set_ai_use_custom_model(False)
+        self._settings.set_ai_custom_model_path("")
+        self._settings.set_ai_custom_model_display_name("")
+        self._set_ai_status_text("settings.ai_no_local_model_selected")
+        self._refresh_ai_summary()
+
+    def _select_custom_runtime(self) -> None:
+        source_file, _ = QFileDialog.getOpenFileName(
+            self,
+            self._translations.t("settings.ai_select_runtime"),
+            str(Path.home()),
+            self._translations.t("settings.ai_runtime_filter_windows" if self._is_windows() else "settings.ai_runtime_filter_all"),
+        )
+        if not source_file:
+            return
+        self._set_ai_status_text("settings.ai_status_messages.copying_local_file")
+        try:
+            target = self._runtime_manager.import_runtime_executable(Path(source_file))
+        except FileNotFoundError:
+            self._set_ai_status_text("settings.ai_runtime_file_missing")
+            return
+        except (OSError, ValueError):
+            self._set_ai_status_text("settings.ai_invalid_runtime_file")
+            return
+        self._settings.set_ai_custom_runtime_path(str(target))
+        self._settings.set_ai_use_custom_runtime(True)
+        self._settings.set_ai_mode("auto")
+        self._set_ai_status_text("settings.ai_runtime_selected_success")
+        self._refresh_ai_summary()
+
+    def _remove_custom_runtime(self) -> None:
+        self._settings.set_ai_use_custom_runtime(False)
+        self._settings.set_ai_custom_runtime_path("")
+        self._set_ai_status_text("settings.ai_no_runtime_selected")
+        self._refresh_ai_summary()
+
+    def _start_with_local_files(self) -> None:
+        self._set_ai_busy(True)
+        self._settings.set_ai_mode("auto")
+        self._set_ai_status_text("settings.ai_starting_with_local_files")
+        self._ai_setup_service.start_custom_runtime()
+
     def _connect_ai_setup_service(self) -> None:
         self._ai_setup_service.status_changed.connect(self._on_ai_setup_status)
         self._ai_setup_service.progress_changed.connect(self._ai_progress.setValue)
@@ -454,12 +566,15 @@ class SettingsPage(QWidget):
         info = get_hardware_info(self._paths.app_data_dir)
         self._recommended_model = recommend_model(info.total_ram_gb)
         selected = self._selected_model_or_fallback()
-        state = self._model_manager.get_local_state(selected)
+        state = self._model_manager.get_custom_model_state(self._settings.ai_custom_model_path()) if self._settings.ai_use_custom_model() else self._model_manager.get_local_state(selected)
         self._ai_status_value.setText(self._translations.t(f"settings.ai_status_values.{self._llm_client.status()}"))
         self._recommended_model_value.setText(self._recommended_model.display_name)
-        self._installed_model_value.setText(selected.display_name if state.verified else self._translations.t("settings.ai_no_model_installed"))
+        installed_model = self._settings.ai_custom_model_display_name() if self._settings.ai_use_custom_model() and state.verified else selected.display_name
+        self._installed_model_value.setText(installed_model if state.verified else self._translations.t("settings.ai_no_model_installed"))
         self._required_space_value.setText(f"{selected.size_gb:.1f} GB")
         self._detected_ram_value.setText(f"{info.total_ram_gb:.1f} GB")
+        self._selected_local_model_value.setText(self._short_path(self._settings.ai_custom_model_path()) if self._settings.ai_use_custom_model() else self._translations.t("settings.ai_no_local_model_selected"))
+        self._selected_runtime_value.setText(self._short_path(self._settings.ai_custom_runtime_path()) if self._settings.ai_use_custom_runtime() else self._translations.t("settings.ai_no_runtime_selected"))
         if not self._ai_status_message_key or self._ai_status_message_key.startswith("settings.ai_status_help."):
             self._set_ai_status_text(f"settings.ai_status_help.{self._llm_client.status()}")
 
@@ -474,7 +589,7 @@ class SettingsPage(QWidget):
         return self._recommended_model
 
     def _set_ai_busy(self, is_busy: bool) -> None:
-        for button in self._ai_buttons:
+        for button in [*self._ai_buttons, *self._ai_file_buttons]:
             button.setEnabled(not is_busy)
         if is_busy:
             self._set_ai_status_text("settings.ai_status_messages.busy")
@@ -492,6 +607,15 @@ class SettingsPage(QWidget):
             self._test_manual_ai_button,
         ):
             widget.setEnabled(is_manual)
+
+    def _short_path(self, value: str) -> str:
+        if not value:
+            return ""
+        path = Path(value)
+        return path.name if path.name else value
+
+    def _is_windows(self) -> bool:
+        return sys.platform.startswith("win")
 
     def _check_integrity(self) -> None:
         report = self._maintenance_service.check_integrity()

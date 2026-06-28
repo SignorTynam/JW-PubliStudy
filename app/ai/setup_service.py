@@ -37,6 +37,9 @@ class LocalAISetupService(QObject):
     @Slot()
     def configure_automatically(self) -> None:
         self.status_changed.emit("checking_hardware")
+        if self._settings.ai_use_custom_model() or self._settings.ai_use_custom_runtime():
+            self.configure_from_local_files()
+            return
         info = get_hardware_info(self._model_manager.models_dir().parent)
         spec = recommend_model(info.total_ram_gb)
         self._settings.set_ai_mode("auto")
@@ -83,6 +86,38 @@ class LocalAISetupService(QObject):
             self._runtime_manager,
             self._model_manager.get_model_path(spec),
             spec.context_tokens,
+        )
+        self._runtime_worker.moveToThread(self._runtime_thread)
+        self._runtime_thread.started.connect(self._runtime_worker.run)
+        self._runtime_worker.finished.connect(self._on_runtime_started)
+        self._runtime_worker.failed.connect(self._on_runtime_failed)
+        self._runtime_worker.finished.connect(self._runtime_thread.quit)
+        self._runtime_worker.failed.connect(self._runtime_thread.quit)
+        self._runtime_thread.finished.connect(self._runtime_thread.deleteLater)
+        self._runtime_thread.start()
+
+    def start_custom_runtime(self) -> None:
+        self.status_changed.emit("starting_with_local_files")
+        model_path = self._settings.ai_custom_model_path()
+        runtime_path = self._settings.ai_custom_runtime_path()
+        if not self._settings.ai_use_custom_model() or not self._model_manager.is_custom_model_ready(model_path):
+            self.error_occurred.emit("custom_model_missing")
+            return
+        if not self._settings.ai_use_custom_runtime() or not Path(runtime_path).is_file():
+            self.error_occurred.emit("custom_runtime_missing")
+            return
+        self._start_runtime_for_path(Path(model_path), 4096)
+
+    def configure_from_local_files(self) -> None:
+        self._settings.set_ai_mode("auto")
+        self.start_custom_runtime()
+
+    def _start_runtime_for_path(self, model_path: Path, context_tokens: int) -> None:
+        self._runtime_thread = QThread()
+        self._runtime_worker = RuntimeStartWorker(
+            self._runtime_manager,
+            model_path,
+            context_tokens,
         )
         self._runtime_worker.moveToThread(self._runtime_thread)
         self._runtime_thread.started.connect(self._runtime_worker.run)

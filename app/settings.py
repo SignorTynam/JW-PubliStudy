@@ -24,6 +24,11 @@ class AppSettings:
     AI_LAST_STATUS_KEY = "ai/last_status"
     AI_MANUAL_ENDPOINT_URL_KEY = "ai/manual_endpoint_url"
     AI_MANUAL_MODEL_NAME_KEY = "ai/manual_model_name"
+    AI_CUSTOM_MODEL_PATH_KEY = "ai/custom_model_path"
+    AI_CUSTOM_MODEL_DISPLAY_NAME_KEY = "ai/custom_model_display_name"
+    AI_USE_CUSTOM_MODEL_KEY = "ai/use_custom_model"
+    AI_CUSTOM_RUNTIME_PATH_KEY = "ai/custom_runtime_path"
+    AI_USE_CUSTOM_RUNTIME_KEY = "ai/use_custom_runtime"
 
     DEFAULT_LLM_ENDPOINT_URL = "http://localhost:1234/v1/chat/completions"
     DEFAULT_LLM_MODEL = "local-model"
@@ -34,8 +39,8 @@ class AppSettings:
     DEFAULT_AI_MODE = "auto"
     DEFAULT_AI_SELECTED_MODEL_ID = "small"
 
-    def __init__(self) -> None:
-        self._settings = QSettings("JW PubliStudy", "JW PubliStudy")
+    def __init__(self, organization: str = "JW PubliStudy", application: str = "JW PubliStudy") -> None:
+        self._settings = QSettings(organization, application)
 
     def language(self) -> str:
         language = self._settings.value(self.LANGUAGE_KEY, I18n.FALLBACK_LANGUAGE, str)
@@ -192,9 +197,52 @@ class AppSettings:
         self._settings.setValue(self.RETRIEVAL_LIMIT_KEY, self._clamp_int(value, 1, 12))
         self._settings.sync()
 
+    def ai_custom_model_path(self) -> str:
+        return self._string_value(self.AI_CUSTOM_MODEL_PATH_KEY, "")
+
+    def set_ai_custom_model_path(self, value: str) -> None:
+        self._settings.setValue(self.AI_CUSTOM_MODEL_PATH_KEY, value.strip())
+        self._settings.sync()
+
+    def ai_custom_model_display_name(self) -> str:
+        return self._string_value(self.AI_CUSTOM_MODEL_DISPLAY_NAME_KEY, "")
+
+    def set_ai_custom_model_display_name(self, value: str) -> None:
+        self._settings.setValue(self.AI_CUSTOM_MODEL_DISPLAY_NAME_KEY, value.strip())
+        self._settings.sync()
+
+    def ai_use_custom_model(self) -> bool:
+        return self._bool_value(self.AI_USE_CUSTOM_MODEL_KEY, False)
+
+    def set_ai_use_custom_model(self, value: bool) -> None:
+        self._settings.setValue(self.AI_USE_CUSTOM_MODEL_KEY, bool(value))
+        self._settings.sync()
+
+    def ai_custom_runtime_path(self) -> str:
+        return self._string_value(self.AI_CUSTOM_RUNTIME_PATH_KEY, "")
+
+    def set_ai_custom_runtime_path(self, value: str) -> None:
+        self._settings.setValue(self.AI_CUSTOM_RUNTIME_PATH_KEY, value.strip())
+        self._settings.sync()
+
+    def ai_use_custom_runtime(self) -> bool:
+        return self._bool_value(self.AI_USE_CUSTOM_RUNTIME_KEY, False)
+
+    def set_ai_use_custom_runtime(self, value: bool) -> None:
+        self._settings.setValue(self.AI_USE_CUSTOM_RUNTIME_KEY, bool(value))
+        self._settings.sync()
+
     def _string_value(self, key: str, fallback: str) -> str:
         value = self._settings.value(key, fallback, str)
         return value.strip() if isinstance(value, str) else fallback
+
+    def _bool_value(self, key: str, fallback: bool) -> bool:
+        value = self._settings.value(key, fallback)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.lower() in {"1", "true", "yes", "on"}
+        return bool(value)
 
     def _bounded_int(self, value: object, minimum: int, maximum: int, fallback: int) -> int:
         try:

@@ -267,7 +267,9 @@
       "starting": "AI lokale po niset...",
       "ready": "AI lokale gati.",
       "failed": "Gabim ne AI lokale.",
-      "manual_mode": "Modalitet manual aktiv."
+      "manual_mode": "Modalitet manual aktiv.",
+      "custom_model_missing": "Modeli AI lokal nuk eshte konfiguruar.",
+      "custom_runtime_missing": "Runtime AI lokal nuk eshte konfiguruar."
     },
     "ai_status_help": {
       "not_configured": "AI lokale nuk eshte konfiguruar ende. Mund ta konfigurosh automatikisht nga Cilesimet.",
@@ -277,7 +279,9 @@
       "starting": "AI lokale po niset...",
       "ready": "AI lokale gati.",
       "failed": "AI lokale nuk eshte gati. Kontrollo Cilesimet.",
-      "manual_mode": "Modalitet manual aktiv."
+      "manual_mode": "Modalitet manual aktiv.",
+      "custom_model_missing": "Modeli AI lokal nuk eshte konfiguruar. Shko te Cilesimet dhe zgjidh nje skedar .gguf ose konfiguro automatikisht.",
+      "custom_runtime_missing": "Runtime AI lokal nuk eshte konfiguruar. Shko te Cilesimet dhe zgjidh llama-server.exe."
     }
   },
   "rag": {
@@ -405,7 +409,9 @@
       "starting": "Duke u nisur",
       "ready": "Gati",
       "failed": "Gabim",
-      "manual_mode": "Modalitet manual"
+      "manual_mode": "Modalitet manual",
+      "custom_model_missing": "Modeli lokal mungon",
+      "custom_runtime_missing": "Runtime lokal mungon"
     },
     "ai_status_help": {
       "not_configured": "AI lokale nuk eshte konfiguruar ende.",
@@ -415,7 +421,9 @@
       "starting": "AI lokale po niset...",
       "ready": "AI lokale eshte gati.",
       "failed": "AI lokale ka nje gabim.",
-      "manual_mode": "Modaliteti manual eshte aktiv."
+      "manual_mode": "Modaliteti manual eshte aktiv.",
+      "custom_model_missing": "Modeli AI lokal nuk eshte konfiguruar. Zgjidh nje skedar .gguf ose konfiguro automatikisht.",
+      "custom_runtime_missing": "Runtime AI lokal nuk eshte konfiguruar. Zgjidh llama-server.exe."
     },
     "ai_status_messages": {
       "checking_hardware": "Po kontrollohet kompjuteri...",
@@ -425,7 +433,9 @@
       "starting_runtime": "Duke nisur AI lokale...",
       "ready": "AI lokale eshte gati.",
       "busy": "Veprim AI ne proces...",
-      "model_already_downloaded": "Modeli eshte shkarkuar dhe verifikuar tashme."
+      "model_already_downloaded": "Modeli eshte shkarkuar dhe verifikuar tashme.",
+      "starting_with_local_files": "Duke nisur AI lokale me skedaret e zgjedhur...",
+      "copying_local_file": "Duke kopjuar skedarin lokal..."
     },
     "ai_errors": {
       "disk_space_insufficient": "Hapesire disku e pamjaftueshme.",
@@ -440,7 +450,31 @@
       "start_failed": "Motori lokal AI nuk mund te nisej.",
       "readiness_timeout": "AI lokale nuk u pergjigj brenda kohes se pritur.",
       "download_url_placeholder": "Katalogu i modeleve perdor ende nje URL placeholder. Vendos nje URL reale ne app/ai/model_catalog.py para se te shkarkosh modelin.",
-      "http_error": "Serveri i modelit ktheu nje gabim. Kontrollo qe URL e modelit te jete e sakte."
-    }
+      "http_error": "Serveri i modelit ktheu nje gabim. Kontrollo qe URL e modelit te jete e sakte.",
+      "custom_model_missing": "Modeli AI lokal nuk eshte konfiguruar ose nuk eshte me i disponueshem.",
+      "custom_runtime_missing": "Runtime AI lokal nuk eshte konfiguruar ose nuk eshte me i disponueshem."
+    },
+    "ai_local_files_section": "Konfigurim lokal nga skedare",
+    "ai_local_files_description": "Perdor nje model .gguf dhe runtime AI te shkarkuar ne kete PC per te testuar modalitetin automatik pa LM Studio ose Ollama.",
+    "ai_selected_local_model": "Modeli lokal i zgjedhur",
+    "ai_selected_runtime": "Runtime AI i zgjedhur",
+    "ai_select_gguf_model": "Zgjidh model .gguf",
+    "ai_remove_selected_model": "Hiq modelin e zgjedhur",
+    "ai_select_runtime": "Zgjidh runtime AI",
+    "ai_remove_selected_runtime": "Hiq runtime-in e zgjedhur",
+    "ai_start_with_local_files": "Nis me skedare lokale",
+    "ai_model_selected_success": "Modeli .gguf u zgjodh me sukses.",
+    "ai_runtime_selected_success": "Runtime AI u zgjodh me sukses.",
+    "ai_model_file_missing": "Skedari i modelit nuk ekziston me.",
+    "ai_runtime_file_missing": "Runtime AI nuk ekziston me.",
+    "ai_invalid_model_file": "Zgjidh nje skedar modeli .gguf te vlefshem.",
+    "ai_invalid_runtime_file": "Zgjidh nje runtime AI te vlefshem.",
+    "ai_starting_with_local_files": "Duke nisur AI lokale me skedaret e zgjedhur...",
+    "ai_local_files_ready": "AI lokale eshte gati me skedaret e zgjedhur.",
+    "ai_no_local_model_selected": "Asnje model lokal i zgjedhur",
+    "ai_no_runtime_selected": "Asnje runtime i zgjedhur",
+    "ai_gguf_filter": "Modele GGUF (*.gguf)",
+    "ai_runtime_filter_windows": "Runtime AI (*.exe)",
+    "ai_runtime_filter_all": "Runtime AI (*)"
   }
 }

@@ -267,7 +267,9 @@
       "starting": "Avvio dell'AI locale in corso...",
       "ready": "AI locale pronta.",
       "failed": "AI locale in errore.",
-      "manual_mode": "Modalita manuale attiva."
+      "manual_mode": "Modalita manuale attiva.",
+      "custom_model_missing": "Modello AI locale non configurato.",
+      "custom_runtime_missing": "Runtime AI locale non configurato."
     },
     "ai_status_help": {
       "not_configured": "L'AI locale non e ancora configurata. Puoi configurarla automaticamente dalle Impostazioni.",
@@ -277,7 +279,9 @@
       "starting": "Avvio dell'AI locale in corso...",
       "ready": "AI locale pronta.",
       "failed": "L'AI locale non e pronta. Controlla le Impostazioni.",
-      "manual_mode": "Modalita manuale attiva."
+      "manual_mode": "Modalita manuale attiva.",
+      "custom_model_missing": "Il modello AI locale non e configurato. Vai in Impostazioni e seleziona un file .gguf oppure configura automaticamente.",
+      "custom_runtime_missing": "Il runtime AI locale non e configurato. Vai in Impostazioni e seleziona llama-server.exe."
     }
   },
   "rag": {
@@ -405,7 +409,9 @@
       "starting": "Avvio in corso",
       "ready": "Pronta",
       "failed": "Errore",
-      "manual_mode": "Modalita manuale"
+      "manual_mode": "Modalita manuale",
+      "custom_model_missing": "Modello locale mancante",
+      "custom_runtime_missing": "Runtime locale mancante"
     },
     "ai_status_help": {
       "not_configured": "L'AI locale non e ancora configurata.",
@@ -415,7 +421,9 @@
       "starting": "Avvio dell'AI locale in corso...",
       "ready": "AI locale pronta.",
       "failed": "L'AI locale ha riscontrato un errore.",
-      "manual_mode": "Modalita manuale attiva."
+      "manual_mode": "Modalita manuale attiva.",
+      "custom_model_missing": "Il modello AI locale non e configurato. Seleziona un file .gguf oppure configura automaticamente.",
+      "custom_runtime_missing": "Il runtime AI locale non e configurato. Seleziona llama-server.exe."
     },
     "ai_status_messages": {
       "checking_hardware": "Controllo del computer...",
@@ -425,7 +433,9 @@
       "starting_runtime": "Avvio dell'AI locale...",
       "ready": "AI locale pronta.",
       "busy": "Operazione AI in corso...",
-      "model_already_downloaded": "Il modello e gia scaricato e verificato."
+      "model_already_downloaded": "Il modello e gia scaricato e verificato.",
+      "starting_with_local_files": "Avvio AI locale con file selezionati...",
+      "copying_local_file": "Copia del file locale in corso..."
     },
     "ai_errors": {
       "disk_space_insufficient": "Spazio su disco insufficiente.",
@@ -440,7 +450,31 @@
       "start_failed": "Impossibile avviare il motore AI locale.",
       "readiness_timeout": "L'AI locale non ha risposto entro il tempo previsto.",
       "download_url_placeholder": "Il catalogo modelli usa ancora un URL placeholder. Inserisci un URL reale in app/ai/model_catalog.py prima di scaricare il modello.",
-      "http_error": "Il server del modello ha risposto con un errore. Controlla che l URL del modello sia corretto."
-    }
+      "http_error": "Il server del modello ha risposto con un errore. Controlla che l URL del modello sia corretto.",
+      "custom_model_missing": "Il modello AI locale non e configurato o non e piu disponibile.",
+      "custom_runtime_missing": "Il runtime AI locale non e configurato o non e piu disponibile."
+    },
+    "ai_local_files_section": "Configurazione locale da file",
+    "ai_local_files_description": "Usa un modello .gguf e un runtime AI gia scaricati sul PC per testare la modalita automatica senza LM Studio o Ollama.",
+    "ai_selected_local_model": "Modello locale selezionato",
+    "ai_selected_runtime": "Runtime AI selezionato",
+    "ai_select_gguf_model": "Seleziona modello .gguf",
+    "ai_remove_selected_model": "Rimuovi modello selezionato",
+    "ai_select_runtime": "Seleziona runtime AI",
+    "ai_remove_selected_runtime": "Rimuovi runtime selezionato",
+    "ai_start_with_local_files": "Avvia con file locali",
+    "ai_model_selected_success": "Modello .gguf selezionato correttamente.",
+    "ai_runtime_selected_success": "Runtime AI selezionato correttamente.",
+    "ai_model_file_missing": "Il file modello non esiste piu.",
+    "ai_runtime_file_missing": "Il runtime AI non esiste piu.",
+    "ai_invalid_model_file": "Seleziona un file modello .gguf valido.",
+    "ai_invalid_runtime_file": "Seleziona un runtime AI valido.",
+    "ai_starting_with_local_files": "Avvio AI locale con file selezionati...",
+    "ai_local_files_ready": "AI locale pronta con i file selezionati.",
+    "ai_no_local_model_selected": "Nessun modello locale selezionato",
+    "ai_no_runtime_selected": "Nessun runtime selezionato",
+    "ai_gguf_filter": "Modelli GGUF (*.gguf)",
+    "ai_runtime_filter_windows": "Runtime AI (*.exe)",
+    "ai_runtime_filter_all": "Runtime AI (*)"
   }
 }

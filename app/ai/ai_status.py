@@ -10,4 +10,5 @@ class AIStatus:
     READY = "ready"
     FAILED = "failed"
     MANUAL_MODE = "manual_mode"
-
+    CUSTOM_MODEL_MISSING = "custom_model_missing"
+    CUSTOM_RUNTIME_MISSING = "custom_runtime_missing"

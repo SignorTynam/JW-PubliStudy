@@ -428,14 +428,20 @@
     "ai_status_messages": {
       "checking_hardware": "Checking this computer...",
       "model_recommended": "Recommended model selected.",
-      "download_model": "Downloading model...",
+      "download_model": "Downloading AI model...",
       "download_started": "Download in progress...",
       "starting_runtime": "Starting local AI...",
-      "ready": "Local AI is ready.",
+      "ready": "Local AI ready.",
       "busy": "AI operation in progress...",
       "model_already_downloaded": "The model is already downloaded and verified.",
       "starting_with_local_files": "Starting local AI with selected files...",
-      "copying_local_file": "Copying local file..."
+      "copying_local_file": "Copying local file...",
+      "resolving_runtime_release": "Finding the latest runtime release...",
+      "downloading_runtime": "Downloading AI runtime...",
+      "extracting_runtime": "Extracting AI runtime...",
+      "runtime_ready": "AI runtime ready.",
+      "downloading_model": "Downloading AI model...",
+      "verifying_model": "Verifying model..."
     },
     "ai_errors": {
       "disk_space_insufficient": "Insufficient disk space.",
@@ -449,10 +455,16 @@
       "runtime_start_failed": "The local AI engine could not be started.",
       "start_failed": "The local AI engine could not be started.",
       "readiness_timeout": "Local AI did not respond in time.",
-      "download_url_placeholder": "The model catalog still uses a placeholder URL. Add a real URL in app/ai/model_catalog.py before downloading the model.",
+      "download_url_placeholder": "The model catalog still uses a placeholder URL.",
       "http_error": "The model server returned an error. Check that the model URL is correct.",
       "custom_model_missing": "The local AI model is not configured or is no longer available.",
-      "custom_runtime_missing": "The local AI runtime is not configured or is no longer available."
+      "custom_runtime_missing": "The local AI runtime is not configured or is no longer available.",
+      "runtime_download_failed": "AI runtime download failed.",
+      "runtime_asset_not_found": "No compatible AI runtime was found in the latest release.",
+      "runtime_zip_invalid": "Runtime archive is not valid.",
+      "runtime_executable_missing": "llama-server.exe was not found in the downloaded runtime.",
+      "runtime_download_unsupported_os": "Automatic runtime download is not supported on this operating system.",
+      "model_download_failed": "Model download failed."
     },
     "ai_local_files_section": "Local file configuration",
     "ai_local_files_description": "Use a .gguf model and AI runtime already downloaded on this PC to test automatic mode without LM Studio or Ollama.",

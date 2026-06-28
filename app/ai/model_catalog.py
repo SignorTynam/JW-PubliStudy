@@ -20,14 +20,15 @@ class LocalModelSpec:
 
 
 _MODEL_CATALOG: tuple[LocalModelSpec, ...] = (
+    # TODO: add verified SHA-256 checksums before production distribution.
     LocalModelSpec(
         id="small",
         display_name="JW PubliStudy Small",
         description="Lightweight local model for PCs with about 8 GB RAM.",
         filename="jw-publistudy-small.gguf",
-        download_url="https://example.com/models/jw-publistudy-small.gguf",
+        download_url="https://huggingface.co/bartowski/Qwen2.5-3B-Instruct-GGUF/resolve/main/Qwen2.5-3B-Instruct-Q4_K_M.gguf?download=true",
         sha256=None,
-        size_gb=3.0,
+        size_gb=1.93,
         min_ram_gb=8.0,
         recommended_machine_class="low",
         context_tokens=4096,
@@ -39,9 +40,9 @@ _MODEL_CATALOG: tuple[LocalModelSpec, ...] = (
         display_name="JW PubliStudy Medium",
         description="Balanced local model for PCs with about 16 GB RAM.",
         filename="jw-publistudy-medium.gguf",
-        download_url="https://example.com/models/jw-publistudy-medium.gguf",
+        download_url="https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf?download=true",
         sha256=None,
-        size_gb=6.0,
+        size_gb=4.68,
         min_ram_gb=12.0,
         recommended_machine_class="medium",
         context_tokens=6144,
@@ -53,9 +54,9 @@ _MODEL_CATALOG: tuple[LocalModelSpec, ...] = (
         display_name="JW PubliStudy Large",
         description="Higher quality local model for PCs with about 32 GB RAM.",
         filename="jw-publistudy-large.gguf",
-        download_url="https://example.com/models/jw-publistudy-large.gguf",
+        download_url="https://huggingface.co/bartowski/Qwen2.5-14B-Instruct-GGUF/resolve/main/Qwen2.5-14B-Instruct-Q4_K_M.gguf?download=true",
         sha256=None,
-        size_gb=12.0,
+        size_gb=8.99,
         min_ram_gb=24.0,
         recommended_machine_class="high",
         context_tokens=8192,
@@ -79,4 +80,3 @@ def recommend_model(total_ram_gb: float) -> LocalModelSpec:
     if total_ram_gb >= 12:
         return get_model("medium") or _MODEL_CATALOG[0]
     return get_model("small") or _MODEL_CATALOG[0]
-

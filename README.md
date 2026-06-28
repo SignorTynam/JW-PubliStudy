@@ -113,11 +113,18 @@ JW PubliStudy prepara una configurazione AI locale gestita dall'app:
 - controlla le caratteristiche del PC;
 - consiglia un modello small, medium o large;
 - salva i modelli nella directory dati locale, non nella repository;
+- scarica automaticamente il runtime dalla latest release ufficiale di `llama.cpp` su GitHub quando manca;
 - avvia un runtime locale su `127.0.0.1` con porta libera;
 - usa la chat RAG solo sulle fonti indicizzate;
 - mantiene pubblicazioni, domande, indici e cronologia sul computer dell'utente.
 
-La prima configurazione puo richiedere tempo e spazio su disco. In questa fase gli URL dei modelli e del runtime sono placeholder centralizzati: se l'utente preme "Configura automaticamente" senza URL reali, l'app mostra un errore chiaro e non va in crash.
+La prima configurazione puo richiedere diversi minuti e spazio su disco. I modelli configurati sono:
+
+- small: Qwen2.5-3B-Instruct Q4_K_M GGUF, circa 1.93 GB
+- medium: Qwen2.5-7B-Instruct Q4_K_M GGUF, circa 4.68 GB
+- large: Qwen2.5-14B-Instruct Q4_K_M GGUF, circa 8.99 GB
+
+I modelli vengono scaricati da Hugging Face. Il runtime viene scaricato dalla latest release ufficiale di `ggml-org/llama.cpp`, scegliendo un asset Windows x64 CPU quando disponibile. In produzione bisogna aggiungere checksum SHA-256 verificati per modelli e runtime.
 
 ### Per sviluppatori
 
@@ -131,8 +138,8 @@ La nuova architettura si trova in `app/ai/`:
 - `ai_client.py`: client unico per modalita automatica e manuale;
 - `setup_service.py`: coordinamento della configurazione automatica.
 
-Gli URL reali dei modelli vanno inseriti in `app/ai/model_catalog.py`.
-L'URL reale del runtime va inserito in `app/ai/runtime_manager.py`.
+Gli URL dei modelli sono in `app/ai/model_catalog.py`.
+La selezione del runtime latest release e in `app/ai/runtime_manager.py` e `app/ai/runtime_download_worker.py`.
 Il binario runtime bundled puo essere messo in `runtime/`, seguendo `runtime/README.md`.
 
 La modalita manuale resta disponibile nelle Impostazioni avanzate per sviluppo o test con server esterni compatibili OpenAI, per esempio LM Studio o Ollama. Non e la modalita richiesta all'utente finale.

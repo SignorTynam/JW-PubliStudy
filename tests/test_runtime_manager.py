@@ -1,4 +1,5 @@
 import unittest
+import zipfile
 from pathlib import Path
 
 from app.ai.runtime_manager import RuntimeManager
@@ -43,6 +44,34 @@ class RuntimeManagerTest(unittest.TestCase):
             settings.set_ai_use_custom_runtime(True)
             self.assertTrue(target.exists())
             self.assertEqual(manager.find_runtime_executable(), target)
+
+    def test_find_latest_windows_asset(self) -> None:
+        manager = RuntimeManager(Path("."))
+        release = {
+            "assets": [
+                {"name": "llama-b999-bin-ubuntu-x64.zip", "browser_download_url": "linux"},
+                {"name": "llama-b999-bin-win-avx2-x64.zip", "browser_download_url": "avx2"},
+                {"name": "llama-b999-bin-win-cpu-x64.zip", "browser_download_url": "cpu"},
+            ]
+        }
+        self.assertEqual(manager.find_latest_windows_asset(release), "cpu")
+
+    def test_find_latest_windows_asset_none(self) -> None:
+        manager = RuntimeManager(Path("."))
+        self.assertIsNone(manager.find_latest_windows_asset({"assets": [{"name": "source.tar.gz"}]}))
+
+    def test_install_runtime_from_zip(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            zip_path = root / "runtime.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                archive.writestr("llama/bin/llama-server.exe", b"x" * 2048)
+            manager = RuntimeManager(root / "data")
+            target = manager.install_runtime_from_zip(zip_path)
+            self.assertTrue(target.exists())
+            self.assertTrue(manager.is_runtime_ready_file(target))
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from app.ai.download_worker import DownloadWorker
 from app.ai.hardware_check import get_hardware_info
 from app.ai.model_catalog import LocalModelSpec, recommend_model
 from app.ai.model_manager import ModelManager
+from app.ai.runtime_download_worker import RuntimeDownloadWorker
 from app.ai.runtime_manager import RuntimeManager
 from app.settings import AppSettings
 
@@ -29,6 +30,9 @@ class LocalAISetupService(QObject):
         self._download_worker: DownloadWorker | None = None
         self._runtime_thread: QThread | None = None
         self._runtime_worker: RuntimeStartWorker | None = None
+        self._runtime_download_thread: QThread | None = None
+        self._runtime_download_worker: RuntimeDownloadWorker | None = None
+        self._pending_model_spec: LocalModelSpec | None = None
 
     def recommended_model(self) -> LocalModelSpec:
         info = get_hardware_info(self._model_manager.models_dir().parent)
@@ -48,10 +52,28 @@ class LocalAISetupService(QObject):
         if info.free_disk_gb < spec.size_gb + 1:
             self.error_occurred.emit("disk_space_insufficient")
             return
+        if not self._runtime_manager.is_runtime_available():
+            self.download_runtime_then_continue(spec)
+            return
         if not self._model_manager.is_model_ready(spec):
             self.download_model(spec, start_after_download=True)
             return
         self.start_runtime(spec)
+
+    def download_runtime_then_continue(self, spec: LocalModelSpec) -> None:
+        self._pending_model_spec = spec
+        self._runtime_download_thread = QThread()
+        self._runtime_download_worker = RuntimeDownloadWorker(self._runtime_manager)
+        self._runtime_download_worker.moveToThread(self._runtime_download_thread)
+        self._runtime_download_thread.started.connect(self._runtime_download_worker.run)
+        self._runtime_download_worker.progress_changed.connect(lambda percent, _done, _total: self.progress_changed.emit(percent))
+        self._runtime_download_worker.status_changed.connect(self.status_changed.emit)
+        self._runtime_download_worker.finished.connect(self._on_runtime_downloaded)
+        self._runtime_download_worker.failed.connect(self._on_runtime_download_failed)
+        self._runtime_download_worker.finished.connect(self._runtime_download_thread.quit)
+        self._runtime_download_worker.failed.connect(self._runtime_download_thread.quit)
+        self._runtime_download_thread.finished.connect(self._runtime_download_thread.deleteLater)
+        self._runtime_download_thread.start()
 
     def download_model(self, spec: LocalModelSpec, start_after_download: bool = False) -> None:
         if self._is_placeholder_url(spec.download_url):
@@ -75,6 +97,21 @@ class LocalAISetupService(QObject):
         self._download_worker.failed.connect(self._download_thread.quit)
         self._download_thread.finished.connect(self._download_thread.deleteLater)
         self._download_thread.start()
+
+    def _on_runtime_downloaded(self, _runtime_path: str) -> None:
+        self.status_changed.emit("runtime_ready")
+        spec = self._pending_model_spec
+        if spec is None:
+            self.finished.emit()
+            return
+        if not self._model_manager.is_model_ready(spec):
+            self.download_model(spec, start_after_download=True)
+            return
+        self.start_runtime(spec)
+
+    def _on_runtime_download_failed(self, error: str) -> None:
+        self._settings.set_ai_last_status("failed")
+        self.error_occurred.emit(error)
 
     def start_runtime(self, spec: LocalModelSpec) -> None:
         self.status_changed.emit("starting_runtime")

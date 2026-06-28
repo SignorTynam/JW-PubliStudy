@@ -428,14 +428,20 @@
     "ai_status_messages": {
       "checking_hardware": "Po kontrollohet kompjuteri...",
       "model_recommended": "Modeli i rekomanduar u zgjodh.",
-      "download_model": "Duke shkarkuar modelin...",
+      "download_model": "Duke shkarkuar modelin AI...",
       "download_started": "Shkarkimi eshte ne proces...",
       "starting_runtime": "Duke nisur AI lokale...",
-      "ready": "AI lokale eshte gati.",
+      "ready": "AI lokale gati.",
       "busy": "Veprim AI ne proces...",
       "model_already_downloaded": "Modeli eshte shkarkuar dhe verifikuar tashme.",
       "starting_with_local_files": "Duke nisur AI lokale me skedaret e zgjedhur...",
-      "copying_local_file": "Duke kopjuar skedarin lokal..."
+      "copying_local_file": "Duke kopjuar skedarin lokal...",
+      "resolving_runtime_release": "Duke kerkuar versionin me te ri te runtime...",
+      "downloading_runtime": "Duke shkarkuar runtime AI...",
+      "extracting_runtime": "Duke nxjerre runtime AI...",
+      "runtime_ready": "Runtime AI eshte gati.",
+      "downloading_model": "Duke shkarkuar modelin AI...",
+      "verifying_model": "Duke verifikuar modelin..."
     },
     "ai_errors": {
       "disk_space_insufficient": "Hapesire disku e pamjaftueshme.",
@@ -449,10 +455,16 @@
       "runtime_start_failed": "Motori lokal AI nuk mund te nisej.",
       "start_failed": "Motori lokal AI nuk mund te nisej.",
       "readiness_timeout": "AI lokale nuk u pergjigj brenda kohes se pritur.",
-      "download_url_placeholder": "Katalogu i modeleve perdor ende nje URL placeholder. Vendos nje URL reale ne app/ai/model_catalog.py para se te shkarkosh modelin.",
+      "download_url_placeholder": "Katalogu i modeleve perdor ende nje URL placeholder.",
       "http_error": "Serveri i modelit ktheu nje gabim. Kontrollo qe URL e modelit te jete e sakte.",
       "custom_model_missing": "Modeli AI lokal nuk eshte konfiguruar ose nuk eshte me i disponueshem.",
-      "custom_runtime_missing": "Runtime AI lokal nuk eshte konfiguruar ose nuk eshte me i disponueshem."
+      "custom_runtime_missing": "Runtime AI lokal nuk eshte konfiguruar ose nuk eshte me i disponueshem.",
+      "runtime_download_failed": "Shkarkimi i runtime AI deshtoi.",
+      "runtime_asset_not_found": "Nuk u gjet runtime AI i pershtatshem ne release me te fundit.",
+      "runtime_zip_invalid": "Arkivi i runtime nuk eshte i vlefshem.",
+      "runtime_executable_missing": "llama-server.exe nuk u gjet ne runtime te shkarkuar.",
+      "runtime_download_unsupported_os": "Shkarkimi automatik i runtime nuk mbeshtetet ne kete sistem operativ.",
+      "model_download_failed": "Shkarkimi i modelit deshtoi."
     },
     "ai_local_files_section": "Konfigurim lokal nga skedare",
     "ai_local_files_description": "Perdor nje model .gguf dhe runtime AI te shkarkuar ne kete PC per te testuar modalitetin automatik pa LM Studio ose Ollama.",

@@ -10,6 +10,7 @@ from app.pages.home_page import HomePage
 from app.pages.publications_page import PublicationsPage
 from app.pages.settings_page import SettingsPage
 from app.pages.study_page import StudyPage
+from app.services.publication_repository import PublicationRepository
 from app.settings import AppSettings
 
 
@@ -32,6 +33,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._translations = translations
         self._settings = settings
+        self._publication_repository = PublicationRepository()
         self._current_page = "home"
 
         self.resize(1100, 720)
@@ -64,7 +66,7 @@ class MainWindow(QMainWindow):
 
         self._stack = QStackedWidget()
         self._home_page = HomePage(translations)
-        self._publications_page = PublicationsPage(translations)
+        self._publications_page = PublicationsPage(translations, self._publication_repository)
         self._study_page = StudyPage(translations)
         self._settings_page = SettingsPage(translations)
         self._settings_page.language_changed.connect(self._change_language)

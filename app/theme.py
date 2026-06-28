@@ -50,6 +50,53 @@ def apply_theme(app: QApplication) -> None:
             color: #183a67;
         }
 
+        QPushButton#PrimaryButton,
+        QPushButton#SecondaryButton,
+        QPushButton#DangerButton {
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 700;
+        }
+
+        QPushButton#PrimaryButton {
+            background: #1d4f8f;
+            color: #ffffff;
+            border: 1px solid #1d4f8f;
+        }
+
+        QPushButton#PrimaryButton:hover {
+            background: #183f72;
+            border-color: #183f72;
+        }
+
+        QPushButton#SecondaryButton {
+            background: #ffffff;
+            color: #243149;
+            border: 1px solid #cfd8e5;
+        }
+
+        QPushButton#SecondaryButton:hover {
+            background: #eef3f8;
+            border-color: #aebbd0;
+        }
+
+        QPushButton#DangerButton {
+            background: #ffffff;
+            color: #b42318;
+            border: 1px solid #f0b8b2;
+        }
+
+        QPushButton#DangerButton:hover {
+            background: #fff1f0;
+            border-color: #e78a82;
+        }
+
+        QPushButton:disabled {
+            background: #edf0f4;
+            color: #98a3b3;
+            border-color: #d9e0ea;
+        }
+
         QWidget#ContentRoot {
             background: #f6f7f9;
         }
@@ -79,10 +126,18 @@ def apply_theme(app: QApplication) -> None:
 
         QLabel#PageSubtitle,
         QLabel#PlaceholderText,
-        QLabel#SettingsDescription {
+        QLabel#SettingsDescription,
+        QLabel#EmptyState {
             background: transparent;
             color: #5e6b80;
             font-size: 15px;
+        }
+
+        QLabel#EmptyState {
+            padding: 38px;
+            border: 1px dashed #c7d1df;
+            border-radius: 8px;
+            background: #ffffff;
         }
 
         QWidget#Card {
@@ -110,7 +165,14 @@ def apply_theme(app: QApplication) -> None:
             font-weight: 700;
         }
 
-        QComboBox {
+        QWidget#ToolbarFrame {
+            background: #ffffff;
+            border: 1px solid #e1e6ee;
+            border-radius: 8px;
+        }
+
+        QComboBox,
+        QComboBox#FilterCombo {
             background: #ffffff;
             border: 1px solid #cfd8e5;
             border-radius: 8px;
@@ -118,13 +180,58 @@ def apply_theme(app: QApplication) -> None:
             min-width: 220px;
         }
 
-        QComboBox:hover {
+        QComboBox#FilterCombo {
+            min-width: 150px;
+        }
+
+        QComboBox:hover,
+        QComboBox#FilterCombo:hover {
             border-color: #8aa4c8;
         }
 
-        QComboBox::drop-down {
+        QComboBox::drop-down,
+        QComboBox#FilterCombo::drop-down {
             border: none;
             width: 28px;
+        }
+
+        QLineEdit {
+            background: #ffffff;
+            border: 1px solid #cfd8e5;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+
+        QLineEdit:focus {
+            border-color: #1d4f8f;
+        }
+
+        QDialog,
+        QMessageBox {
+            background: #f6f7f9;
+        }
+
+        QTableWidget#PublicationsTable {
+            background: #ffffff;
+            border: 1px solid #e1e6ee;
+            border-radius: 8px;
+            gridline-color: #edf1f6;
+            selection-background-color: #dceaff;
+            selection-color: #172033;
+            alternate-background-color: #f8fafc;
+        }
+
+        QTableWidget#PublicationsTable::item {
+            padding: 8px;
+        }
+
+        QHeaderView::section {
+            background: #eef3f8;
+            color: #243149;
+            border: none;
+            border-bottom: 1px solid #dbe3ee;
+            padding: 9px 10px;
+            font-weight: 700;
         }
         """
     )

@@ -2,6 +2,9 @@
   "app": {
     "title": "JW PubliStudy"
   },
+  "common": {
+    "ok": "OK"
+  },
   "nav": {
     "home": "Kreu",
     "publications": "Botime",
@@ -28,7 +31,85 @@
   },
   "publications": {
     "title": "Botime",
-    "placeholder": "Ne nje faze te ardhshme ketu do te jete e mundur te ngarkosh, shikosh dhe menaxhosh botimet personale. Tani per tani kjo faqe eshte vetem nje vendmbajtes i struktures."
+    "description": "Importo dhe menaxho botime lokale ne format PDF ose TXT. Ne kete faze ruhen vetem skedaret dhe metadhenat.",
+    "import_button": "Importo botim",
+    "rename_button": "Riemerto",
+    "delete_button": "Fshi",
+    "empty": "Nuk ka botime te importuara. Importo nje skedar PDF ose TXT per te filluar.",
+    "file_dialog": {
+      "title": "Zgjidh botim",
+      "filter": "Botime (*.pdf *.txt)"
+    },
+    "filter": {
+      "language": "Gjuha",
+      "type": "Tipi",
+      "status": "Statusi",
+      "all": "Te gjitha"
+    },
+    "language": {
+      "it": "Italiano",
+      "al": "Shqip",
+      "en": "English",
+      "unknown": "E panjohur"
+    },
+    "type": {
+      "all": "Te gjitha",
+      "pdf": "PDF",
+      "txt": "TXT"
+    },
+    "status": {
+      "all": "Te gjitha",
+      "imported": "Importuar",
+      "pending_indexing": "Ne pritje",
+      "indexed": "Indeksuar",
+      "error": "Gabim"
+    },
+    "table": {
+      "title": "Titulli",
+      "language": "Gjuha",
+      "type": "Tipi",
+      "size": "Madhesia",
+      "status": "Statusi",
+      "imported_at": "Data e importimit"
+    },
+    "size": {
+      "bytes": "{size} B",
+      "kb": "{size:.1f} KB",
+      "mb": "{size:.1f} MB"
+    },
+    "import_dialog": {
+      "title": "Importo botim",
+      "publication_title": "Titulli",
+      "language": "Gjuha",
+      "confirm": "Konfirmo",
+      "cancel": "Anulo"
+    },
+    "rename_dialog": {
+      "title": "Riemerto botimin",
+      "label": "Titulli i ri",
+      "confirm": "Konfirmo",
+      "cancel": "Anulo"
+    },
+    "delete_confirm": {
+      "title": "Fshi botimin",
+      "message": "Deshiron te fshish \"{title}\" nga biblioteka lokale?",
+      "delete": "Fshi",
+      "cancel": "Anulo"
+    },
+    "error": {
+      "title": "Gabim",
+      "unsupported_file": "Tipi i skedarit te zgjedhur nuk mbeshtetet. Perdore nje skedar PDF ose TXT.",
+      "duplicate": "Ky botim eshte importuar tashme.",
+      "import_failed": "Nuk ishte e mundur te importohej botimi.",
+      "delete_failed": "Nuk ishte e mundur te fshihej botimi.",
+      "rename_failed": "Nuk ishte e mundur te riemertohej botimi."
+    },
+    "success": {
+      "title": "Veprimi u krye",
+      "imported": "Botimi u importua me sukses.",
+      "deleted": "Botimi u fshi me sukses.",
+      "renamed": "Botimi u riemertua me sukses."
+    }
   },
   "study": {
     "title": "Studim / Chat",

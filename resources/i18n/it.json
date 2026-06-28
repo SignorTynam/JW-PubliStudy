@@ -2,6 +2,9 @@
   "app": {
     "title": "JW PubliStudy"
   },
+  "common": {
+    "ok": "OK"
+  },
   "nav": {
     "home": "Home",
     "publications": "Pubblicazioni",
@@ -28,7 +31,85 @@
   },
   "publications": {
     "title": "Pubblicazioni",
-    "placeholder": "In una fase successiva qui sara possibile caricare, visualizzare e gestire le pubblicazioni personali. Per ora questa pagina e solo un segnaposto della struttura."
+    "description": "Importa e gestisci pubblicazioni locali in formato PDF o TXT. In questa fase vengono salvati solo file e metadati.",
+    "import_button": "Importa pubblicazione",
+    "rename_button": "Rinomina",
+    "delete_button": "Elimina",
+    "empty": "Nessuna pubblicazione importata. Importa un file PDF o TXT per iniziare.",
+    "file_dialog": {
+      "title": "Seleziona pubblicazione",
+      "filter": "Pubblicazioni (*.pdf *.txt)"
+    },
+    "filter": {
+      "language": "Lingua",
+      "type": "Tipo",
+      "status": "Stato",
+      "all": "Tutte"
+    },
+    "language": {
+      "it": "Italiano",
+      "al": "Shqip",
+      "en": "English",
+      "unknown": "Sconosciuta"
+    },
+    "type": {
+      "all": "Tutti",
+      "pdf": "PDF",
+      "txt": "TXT"
+    },
+    "status": {
+      "all": "Tutti",
+      "imported": "Importata",
+      "pending_indexing": "In attesa",
+      "indexed": "Indicizzata",
+      "error": "Errore"
+    },
+    "table": {
+      "title": "Titolo",
+      "language": "Lingua",
+      "type": "Tipo",
+      "size": "Dimensione",
+      "status": "Stato",
+      "imported_at": "Data importazione"
+    },
+    "size": {
+      "bytes": "{size} B",
+      "kb": "{size:.1f} KB",
+      "mb": "{size:.1f} MB"
+    },
+    "import_dialog": {
+      "title": "Importa pubblicazione",
+      "publication_title": "Titolo",
+      "language": "Lingua",
+      "confirm": "Conferma",
+      "cancel": "Annulla"
+    },
+    "rename_dialog": {
+      "title": "Rinomina pubblicazione",
+      "label": "Nuovo titolo",
+      "confirm": "Conferma",
+      "cancel": "Annulla"
+    },
+    "delete_confirm": {
+      "title": "Elimina pubblicazione",
+      "message": "Vuoi eliminare \"{title}\" dalla libreria locale?",
+      "delete": "Elimina",
+      "cancel": "Annulla"
+    },
+    "error": {
+      "title": "Errore",
+      "unsupported_file": "Il tipo di file selezionato non e supportato. Usa un file PDF o TXT.",
+      "duplicate": "Questa pubblicazione e gia stata importata.",
+      "import_failed": "Non e stato possibile importare la pubblicazione.",
+      "delete_failed": "Non e stato possibile eliminare la pubblicazione.",
+      "rename_failed": "Non e stato possibile rinominare la pubblicazione."
+    },
+    "success": {
+      "title": "Operazione completata",
+      "imported": "Pubblicazione importata correttamente.",
+      "deleted": "Pubblicazione eliminata correttamente.",
+      "renamed": "Pubblicazione rinominata correttamente."
+    }
   },
   "study": {
     "title": "Studio / Chat",

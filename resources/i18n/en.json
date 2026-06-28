@@ -2,6 +2,9 @@
   "app": {
     "title": "JW PubliStudy"
   },
+  "common": {
+    "ok": "OK"
+  },
   "nav": {
     "home": "Home",
     "publications": "Publications",
@@ -28,7 +31,85 @@
   },
   "publications": {
     "title": "Publications",
-    "placeholder": "In a later phase this page will let you load, view, and manage personal publications. For now it is only a placeholder for the application structure."
+    "description": "Import and manage local publications in PDF or TXT format. This phase stores only files and metadata.",
+    "import_button": "Import publication",
+    "rename_button": "Rename",
+    "delete_button": "Delete",
+    "empty": "No publications imported. Import a PDF or TXT file to get started.",
+    "file_dialog": {
+      "title": "Select publication",
+      "filter": "Publications (*.pdf *.txt)"
+    },
+    "filter": {
+      "language": "Language",
+      "type": "Type",
+      "status": "Status",
+      "all": "All"
+    },
+    "language": {
+      "it": "Italiano",
+      "al": "Shqip",
+      "en": "English",
+      "unknown": "Unknown"
+    },
+    "type": {
+      "all": "All",
+      "pdf": "PDF",
+      "txt": "TXT"
+    },
+    "status": {
+      "all": "All",
+      "imported": "Imported",
+      "pending_indexing": "Pending",
+      "indexed": "Indexed",
+      "error": "Error"
+    },
+    "table": {
+      "title": "Title",
+      "language": "Language",
+      "type": "Type",
+      "size": "Size",
+      "status": "Status",
+      "imported_at": "Imported at"
+    },
+    "size": {
+      "bytes": "{size} B",
+      "kb": "{size:.1f} KB",
+      "mb": "{size:.1f} MB"
+    },
+    "import_dialog": {
+      "title": "Import publication",
+      "publication_title": "Title",
+      "language": "Language",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "rename_dialog": {
+      "title": "Rename publication",
+      "label": "New title",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "delete_confirm": {
+      "title": "Delete publication",
+      "message": "Do you want to delete \"{title}\" from the local library?",
+      "delete": "Delete",
+      "cancel": "Cancel"
+    },
+    "error": {
+      "title": "Error",
+      "unsupported_file": "The selected file type is not supported. Use a PDF or TXT file.",
+      "duplicate": "This publication has already been imported.",
+      "import_failed": "The publication could not be imported.",
+      "delete_failed": "The publication could not be deleted.",
+      "rename_failed": "The publication could not be renamed."
+    },
+    "success": {
+      "title": "Operation completed",
+      "imported": "Publication imported successfully.",
+      "deleted": "Publication deleted successfully.",
+      "renamed": "Publication renamed successfully."
+    }
   },
   "study": {
     "title": "Study / Chat",

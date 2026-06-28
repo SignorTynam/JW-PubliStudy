@@ -1,8 +1,10 @@
 import unittest
+import subprocess
 import zipfile
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
-from app.ai.runtime_manager import RuntimeManager
+from app.ai.runtime_manager import RuntimeManager, parse_runtime_loading_progress
 from app.settings import AppSettings
 
 
@@ -72,6 +74,64 @@ class RuntimeManagerTest(unittest.TestCase):
             target = manager.install_runtime_from_zip(zip_path)
             self.assertTrue(target.exists())
             self.assertTrue(manager.is_runtime_ready_file(target))
+
+    def test_start_uses_explicit_timeout_and_captures_logs(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = root / "runtime" / "llama-server.exe"
+            runtime.parent.mkdir(parents=True)
+            runtime.write_bytes(b"x" * 2048)
+            manager = RuntimeManager(root)
+            captured = {}
+
+            def fake_wait(endpoint_base_url, timeout_seconds=None):
+                captured["timeout"] = timeout_seconds
+                return True
+
+            process = MagicMock()
+            process.poll.return_value = None
+            process.stdout = None
+            process.stderr = None
+            with patch.object(manager, "wait_until_ready", side_effect=fake_wait), patch("subprocess.Popen", return_value=process) as popen:
+                state = manager.start(root / "model.gguf", 4096, timeout_seconds=777)
+
+            self.assertEqual(state.status, "ready")
+            self.assertEqual(captured["timeout"], 777)
+            self.assertNotEqual(popen.call_args.kwargs["stdout"], subprocess.DEVNULL)
+            self.assertNotEqual(popen.call_args.kwargs["stderr"], subprocess.DEVNULL)
+
+    def test_start_uses_settings_timeout_when_none(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = root / "runtime" / "llama-server.exe"
+            runtime.parent.mkdir(parents=True)
+            runtime.write_bytes(b"x" * 2048)
+            settings = AppSettings("JW PubliStudy Tests", "RuntimeTimeoutSettings")
+            settings.set_ai_startup_timeout_seconds(900)
+            manager = RuntimeManager(root, settings)
+            captured = {}
+
+            def fake_wait(endpoint_base_url, timeout_seconds=None):
+                captured["timeout"] = timeout_seconds
+                return True
+
+            process = MagicMock()
+            process.poll.return_value = None
+            process.stdout = None
+            process.stderr = None
+            with patch.object(manager, "wait_until_ready", side_effect=fake_wait), patch("subprocess.Popen", return_value=process):
+                manager.start(root / "model.gguf", 4096)
+
+            self.assertEqual(captured["timeout"], 900)
+
+    def test_parse_runtime_loading_progress(self) -> None:
+        self.assertEqual(parse_runtime_loading_progress("loaded 50/100 tensors"), 50)
+        self.assertIsNone(parse_runtime_loading_progress("loading model"))
+        self.assertIsNone(parse_runtime_loading_progress(""))
 
 
 if __name__ == "__main__":

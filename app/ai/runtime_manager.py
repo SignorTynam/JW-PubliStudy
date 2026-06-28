@@ -4,10 +4,12 @@ import socket
 import subprocess
 import shutil
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
 import zipfile
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 import re
@@ -43,11 +45,16 @@ DEFAULT_RUNTIME_SPEC = RuntimeSpec(
 
 
 class RuntimeManager:
+    DEFAULT_STARTUP_TIMEOUT_SECONDS = 600
+
     def __init__(self, data_dir: Path, settings: AppSettings | None = None) -> None:
         self._data_dir = Path(data_dir)
         self._settings = settings
         self._process: subprocess.Popen[str] | None = None
         self._state = RuntimeState("not_installed", None, None, False)
+        self._log_lock = threading.Lock()
+        self._runtime_logs: deque[str] = deque(maxlen=100)
+        self._log_threads: list[threading.Thread] = []
 
     def find_runtime_executable(self) -> Path | None:
         if self._settings is not None and self._settings.ai_use_custom_runtime():
@@ -164,7 +171,7 @@ class RuntimeManager:
             str(context_tokens),
         ]
 
-    def start(self, model_path: Path, context_tokens: int) -> RuntimeState:
+    def start(self, model_path: Path, context_tokens: int, timeout_seconds: int | None = None) -> RuntimeState:
         executable = self.find_runtime_executable()
         if executable is None:
             self._state = RuntimeState("not_installed", None, None, False, "runtime_missing")
@@ -178,22 +185,30 @@ class RuntimeManager:
         command = self.build_command(model_path, port, context_tokens)
         try:
             creationflags = subprocess.CREATE_NO_WINDOW if sys.platform.startswith("win") else 0
+            self._clear_runtime_logs()
             self._process = subprocess.Popen(
                 command,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
                 creationflags=creationflags,
             )
+            self._start_log_readers(self._process)
         except OSError:
             self._state = RuntimeState("failed", None, None, False, "start_failed")
             return self._state
         self._state = RuntimeState("starting", endpoint_base + "/v1/chat/completions", port, True)
-        if self.wait_until_ready(endpoint_base):
+        if self.wait_until_ready(endpoint_base, self._resolve_startup_timeout(timeout_seconds)):
             self._state = RuntimeState("ready", endpoint_base + "/v1/chat/completions", port, True)
             return self._state
+        if self._process is not None and self._process.poll() is not None:
+            self._state = RuntimeState("failed", None, port, False, "runtime_process_exited")
+            return self._state
         self.stop()
-        self._state = RuntimeState("failed", None, port, False, "readiness_timeout")
+        self._state = RuntimeState("failed", None, port, False, "startup_timeout")
         return self._state
 
     def stop(self) -> None:
@@ -205,19 +220,22 @@ class RuntimeManager:
                 self._process.kill()
         self._state = RuntimeState("stopped", None, None, False)
 
-    def restart(self, model_path: Path, context_tokens: int) -> RuntimeState:
+    def restart(self, model_path: Path, context_tokens: int, timeout_seconds: int | None = None) -> RuntimeState:
         self.stop()
-        return self.start(model_path, context_tokens)
+        return self.start(model_path, context_tokens, timeout_seconds)
 
     def get_state(self) -> RuntimeState:
         if self._process is not None and self._process.poll() is not None and self._state.status in {"starting", "ready"}:
-            self._state = RuntimeState("failed", self._state.endpoint_url, self._state.port, False, "process_exited")
+            self._state = RuntimeState("failed", self._state.endpoint_url, self._state.port, False, "runtime_process_exited")
         return self._state
 
-    def wait_until_ready(self, endpoint_base_url: str, timeout_seconds: int = 120) -> bool:
-        deadline = time.monotonic() + timeout_seconds
+    def wait_until_ready(self, endpoint_base_url: str, timeout_seconds: int | None = None) -> bool:
+        timeout = self._resolve_startup_timeout(timeout_seconds)
+        deadline = time.monotonic() + timeout
         url = endpoint_base_url.rstrip("/") + "/v1/models"
         while time.monotonic() < deadline:
+            if self._process is not None and self._process.poll() is not None:
+                return False
             try:
                 with urllib.request.urlopen(url, timeout=2) as response:
                     if 200 <= response.status < 300:
@@ -225,3 +243,78 @@ class RuntimeManager:
             except (urllib.error.URLError, TimeoutError, OSError):
                 time.sleep(1)
         return False
+
+    def last_runtime_logs(self) -> list[str]:
+        with self._log_lock:
+            return list(self._runtime_logs)
+
+    def last_runtime_log_text(self) -> str:
+        return "\n".join(self.last_runtime_logs())
+
+    def latest_loading_progress(self) -> int | None:
+        for line in reversed(self.last_runtime_logs()):
+            progress = parse_runtime_loading_progress(line)
+            if progress is not None:
+                return progress
+        return None
+
+    def _resolve_startup_timeout(self, timeout_seconds: int | None) -> int:
+        if timeout_seconds is not None:
+            try:
+                parsed = int(timeout_seconds)
+            except (TypeError, ValueError):
+                parsed = self.DEFAULT_STARTUP_TIMEOUT_SECONDS
+            return max(120, min(1800, parsed))
+        if self._settings is not None:
+            return self._settings.ai_startup_timeout_seconds()
+        return self.DEFAULT_STARTUP_TIMEOUT_SECONDS
+
+    def _clear_runtime_logs(self) -> None:
+        with self._log_lock:
+            self._runtime_logs.clear()
+
+    def _append_runtime_log(self, source: str, line: str) -> None:
+        cleaned = line.rstrip()
+        if not cleaned:
+            return
+        with self._log_lock:
+            self._runtime_logs.append(f"{source}: {cleaned}")
+
+    def _start_log_readers(self, process: subprocess.Popen[str]) -> None:
+        self._log_threads = []
+        for source, stream in (("stdout", process.stdout), ("stderr", process.stderr)):
+            if stream is None:
+                continue
+            thread = threading.Thread(
+                target=self._read_runtime_stream,
+                args=(source, stream),
+                name=f"RuntimeLogReader-{source}",
+                daemon=True,
+            )
+            self._log_threads.append(thread)
+            thread.start()
+
+    def _read_runtime_stream(self, source: str, stream) -> None:
+        try:
+            for line in iter(stream.readline, ""):
+                self._append_runtime_log(source, line)
+        except OSError:
+            return
+        finally:
+            try:
+                stream.close()
+            except OSError:
+                pass
+
+
+def parse_runtime_loading_progress(line: str) -> int | None:
+    if not line:
+        return None
+    match = re.search(r"\bloaded\s+(\d+)\s*/\s*(\d+)\b", line, re.IGNORECASE)
+    if not match:
+        return None
+    loaded = int(match.group(1))
+    total = int(match.group(2))
+    if total <= 0:
+        return None
+    return max(0, min(100, round((loaded / total) * 100)))

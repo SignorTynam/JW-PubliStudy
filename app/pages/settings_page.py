@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QUrl, Signal
+from PySide6.QtCore import QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -72,6 +72,10 @@ class SettingsPage(QWidget):
         self._ai_file_buttons: list[QPushButton] = []
         self._recommended_model: LocalModelSpec | None = None
         self._ai_status_message_key = ""
+        self._startup_elapsed_seconds = 0
+        self._startup_timer = QTimer(self)
+        self._startup_timer.setInterval(1000)
+        self._startup_timer.timeout.connect(self._update_startup_elapsed)
 
         self.setObjectName("Page")
         outer_layout = QVBoxLayout(self)
@@ -152,10 +156,15 @@ class SettingsPage(QWidget):
         self._temperature_label.setText(self._translations.t("settings.ai.temperature"))
         self._max_tokens_label.setText(self._translations.t("settings.ai.max_tokens"))
         self._timeout_label.setText(self._translations.t("settings.ai.timeout"))
+        self._startup_timeout_label.setText(self._translations.t("settings.ai.startup_timeout"))
+        self._startup_timeout_help.setText(self._translations.t("settings.ai.startup_timeout_help"))
+        self._startup_timeout_input.setSuffix(f" {self._translations.t('settings.ai.seconds_suffix')}")
         self._retrieval_limit_label.setText(self._translations.t("settings.ai.retrieval_limit"))
         self._save_ai_button.setText(self._translations.t("settings.ai.save"))
         self._reset_ai_button.setText(self._translations.t("settings.ai.reset_defaults"))
         self._test_manual_ai_button.setText(self._translations.t("settings.ai.test_connection"))
+        self._show_runtime_logs_button.setText(self._translations.t("settings.ai.show_runtime_logs"))
+        self._update_startup_elapsed()
 
         self._data_title.setText(self._translations.t("settings.data_section"))
         self._data_description.setText(self._translations.t("settings.data_description"))
@@ -229,10 +238,14 @@ class SettingsPage(QWidget):
         self._ai_status_message = QLabel()
         self._ai_status_message.setObjectName("MaintenanceReport")
         self._ai_status_message.setWordWrap(True)
+        self._ai_elapsed_time = QLabel()
+        self._ai_elapsed_time.setObjectName("DetailMeta")
+        self._ai_elapsed_time.setVisible(False)
         self._ai_privacy = QLabel()
         self._ai_privacy.setObjectName("PrivacyWarning")
         self._ai_privacy.setWordWrap(True)
         layout.addWidget(self._ai_status_message)
+        layout.addWidget(self._ai_elapsed_time)
         layout.addWidget(self._ai_progress)
         buttons = QHBoxLayout()
         self._configure_ai_button = self._primary_button(self._configure_ai_automatically)
@@ -311,6 +324,11 @@ class SettingsPage(QWidget):
         self._timeout_label = QLabel()
         self._timeout_input = QSpinBox()
         self._timeout_input.setRange(10, 300)
+        self._startup_timeout_label = QLabel()
+        self._startup_timeout_input = QSpinBox()
+        self._startup_timeout_input.setRange(120, 1800)
+        self._startup_timeout_input.setSingleStep(30)
+        self._startup_timeout_help = self._section_description()
         self._retrieval_limit_label = QLabel()
         self._retrieval_limit_input = QSpinBox()
         self._retrieval_limit_input.setRange(1, 12)
@@ -319,13 +337,17 @@ class SettingsPage(QWidget):
         form.addRow(self._temperature_label, self._temperature_input)
         form.addRow(self._max_tokens_label, self._max_tokens_input)
         form.addRow(self._timeout_label, self._timeout_input)
+        form.addRow(self._startup_timeout_label, self._startup_timeout_input)
+        form.addRow("", self._startup_timeout_help)
         form.addRow(self._retrieval_limit_label, self._retrieval_limit_input)
         advanced_layout.addLayout(form)
         advanced_buttons = QHBoxLayout()
         advanced_buttons.addStretch(1)
+        self._show_runtime_logs_button = self._secondary_button(self._show_runtime_logs)
         self._reset_ai_button = self._secondary_button(self._reset_ai_settings)
         self._test_manual_ai_button = self._secondary_button(self._test_connection)
         self._save_ai_button = self._primary_button(self._save_ai_settings)
+        advanced_buttons.addWidget(self._show_runtime_logs_button)
         advanced_buttons.addWidget(self._reset_ai_button)
         advanced_buttons.addWidget(self._test_manual_ai_button)
         advanced_buttons.addWidget(self._save_ai_button)
@@ -422,6 +444,7 @@ class SettingsPage(QWidget):
         self._temperature_input.setValue(self._settings.ai_temperature())
         self._max_tokens_input.setValue(self._settings.ai_max_tokens())
         self._timeout_input.setValue(self._settings.ai_timeout_seconds())
+        self._startup_timeout_input.setValue(self._settings.ai_startup_timeout_seconds())
         self._retrieval_limit_input.setValue(self._settings.ai_default_sources_count())
         self._update_advanced_enabled()
 
@@ -436,6 +459,7 @@ class SettingsPage(QWidget):
         self._settings.set_ai_temperature(self._temperature_input.value())
         self._settings.set_ai_max_tokens(self._max_tokens_input.value())
         self._settings.set_ai_timeout_seconds(self._timeout_input.value())
+        self._settings.set_ai_startup_timeout_seconds(self._startup_timeout_input.value())
         self._settings.set_ai_default_sources_count(self._retrieval_limit_input.value())
 
     def _reset_ai_settings(self) -> None:
@@ -454,6 +478,7 @@ class SettingsPage(QWidget):
 
     def _configure_ai_automatically(self) -> None:
         self._set_ai_busy(True)
+        self._set_progress_determinate(0)
         self._ai_progress.setValue(0)
         self._ai_setup_service.configure_automatically()
 
@@ -547,15 +572,27 @@ class SettingsPage(QWidget):
 
     def _on_ai_setup_status(self, code: str) -> None:
         self._set_ai_status_text(f"settings.ai_status_messages.{code}")
+        if code in {"starting_runtime", "loading_model", "waiting_for_runtime", "starting_with_local_files"}:
+            self._set_progress_indeterminate()
+            self._start_elapsed_timer()
+        elif code in {"download_model", "download_started", "downloading_model", "downloading_runtime", "extracting_runtime"}:
+            self._set_progress_determinate(self._ai_progress.value())
+        elif code in {"ready", "runtime_ready"}:
+            self._set_progress_determinate(100)
+            self._stop_elapsed_timer()
         self._refresh_ai_summary()
 
     def _on_ai_setup_error(self, code: str) -> None:
         self._set_ai_busy(False)
+        self._set_progress_determinate(0)
+        self._stop_elapsed_timer()
         self._set_ai_status_text(f"settings.ai_errors.{code}")
         self._refresh_ai_summary()
 
     def _on_ai_setup_finished(self) -> None:
         self._set_ai_busy(False)
+        self._set_progress_determinate(100)
+        self._stop_elapsed_timer()
         self._refresh_ai_summary()
 
     def _on_manual_mode_changed(self) -> None:
@@ -598,6 +635,8 @@ class SettingsPage(QWidget):
             button.setEnabled(not is_busy)
         if is_busy:
             self._set_ai_status_text("settings.ai_status_messages.busy")
+        else:
+            self._stop_elapsed_timer()
 
     def _set_ai_status_text(self, key: str) -> None:
         self._ai_status_message_key = key
@@ -612,6 +651,44 @@ class SettingsPage(QWidget):
             self._test_manual_ai_button,
         ):
             widget.setEnabled(is_manual)
+
+    def _set_progress_indeterminate(self) -> None:
+        self._ai_progress.setRange(0, 0)
+
+    def _set_progress_determinate(self, value: int) -> None:
+        self._ai_progress.setRange(0, 100)
+        self._ai_progress.setValue(value)
+
+    def _start_elapsed_timer(self) -> None:
+        if not self._startup_timer.isActive():
+            self._startup_elapsed_seconds = 0
+            self._ai_elapsed_time.setVisible(True)
+            self._startup_timer.start()
+        self._update_startup_elapsed()
+
+    def _stop_elapsed_timer(self) -> None:
+        self._startup_timer.stop()
+        self._startup_elapsed_seconds = 0
+        if hasattr(self, "_ai_elapsed_time"):
+            self._ai_elapsed_time.setVisible(False)
+
+    def _update_startup_elapsed(self) -> None:
+        minutes, seconds = divmod(self._startup_elapsed_seconds, 60)
+        if hasattr(self, "_ai_elapsed_time"):
+            self._ai_elapsed_time.setText(
+                self._translations.t("settings.ai_elapsed_time").format(
+                    time=f"{minutes:02d}:{seconds:02d}"
+                )
+            )
+        self._startup_elapsed_seconds += 1
+
+    def _show_runtime_logs(self) -> None:
+        logs = self._runtime_manager.last_runtime_log_text()
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle(self._translations.t("settings.ai.runtime_logs_title"))
+        dialog.setText(logs if logs else self._translations.t("settings.ai.runtime_logs_empty"))
+        dialog.addButton(self._translations.t("common.ok"), QMessageBox.ButtonRole.AcceptRole)
+        dialog.exec()
 
     def _short_path(self, value: str) -> str:
         if not value:

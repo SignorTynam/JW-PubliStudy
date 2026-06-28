@@ -29,6 +29,7 @@ class AppSettings:
     AI_USE_CUSTOM_MODEL_KEY = "ai/use_custom_model"
     AI_CUSTOM_RUNTIME_PATH_KEY = "ai/custom_runtime_path"
     AI_USE_CUSTOM_RUNTIME_KEY = "ai/use_custom_runtime"
+    AI_STARTUP_TIMEOUT_SECONDS_KEY = "ai/startup_timeout_seconds"
 
     DEFAULT_LLM_ENDPOINT_URL = "http://localhost:1234/v1/chat/completions"
     DEFAULT_LLM_MODEL = "local-model"
@@ -38,6 +39,7 @@ class AppSettings:
     DEFAULT_RETRIEVAL_LIMIT = 6
     DEFAULT_AI_MODE = "auto"
     DEFAULT_AI_SELECTED_MODEL_ID = "small"
+    DEFAULT_AI_STARTUP_TIMEOUT_SECONDS = 600
 
     def __init__(self, organization: str = "JW PubliStudy", application: str = "JW PubliStudy") -> None:
         self._settings = QSettings(organization, application)
@@ -104,6 +106,7 @@ class AppSettings:
         self.set_ai_max_tokens(self.DEFAULT_LLM_MAX_TOKENS)
         self.set_ai_timeout_seconds(self.DEFAULT_LLM_TIMEOUT_SECONDS)
         self.set_ai_default_sources_count(self.DEFAULT_RETRIEVAL_LIMIT)
+        self.set_ai_startup_timeout_seconds(self.DEFAULT_AI_STARTUP_TIMEOUT_SECONDS)
 
     def ai_mode(self) -> str:
         value = self._settings.value(self.AI_MODE_KEY, self.DEFAULT_AI_MODE, str)
@@ -195,6 +198,18 @@ class AppSettings:
 
     def set_ai_default_sources_count(self, value: int) -> None:
         self._settings.setValue(self.RETRIEVAL_LIMIT_KEY, self._clamp_int(value, 1, 12))
+        self._settings.sync()
+
+    def ai_startup_timeout_seconds(self) -> int:
+        return self._bounded_int(
+            self._settings.value(self.AI_STARTUP_TIMEOUT_SECONDS_KEY, self.DEFAULT_AI_STARTUP_TIMEOUT_SECONDS),
+            120,
+            1800,
+            self.DEFAULT_AI_STARTUP_TIMEOUT_SECONDS,
+        )
+
+    def set_ai_startup_timeout_seconds(self, value: int) -> None:
+        self._settings.setValue(self.AI_STARTUP_TIMEOUT_SECONDS_KEY, self._clamp_int(value, 120, 1800))
         self._settings.sync()
 
     def ai_custom_model_path(self) -> str:

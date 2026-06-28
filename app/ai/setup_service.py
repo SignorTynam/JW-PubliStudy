@@ -123,9 +123,11 @@ class LocalAISetupService(QObject):
             self._runtime_manager,
             self._model_manager.get_model_path(spec),
             spec.context_tokens,
+            self._settings.ai_startup_timeout_seconds(),
         )
         self._runtime_worker.moveToThread(self._runtime_thread)
         self._runtime_thread.started.connect(self._runtime_worker.run)
+        self._runtime_worker.status_changed.connect(self.status_changed.emit)
         self._runtime_worker.finished.connect(self._on_runtime_started)
         self._runtime_worker.failed.connect(self._on_runtime_failed)
         self._runtime_worker.finished.connect(self._runtime_thread.quit)
@@ -155,9 +157,11 @@ class LocalAISetupService(QObject):
             self._runtime_manager,
             model_path,
             context_tokens,
+            self._settings.ai_startup_timeout_seconds(),
         )
         self._runtime_worker.moveToThread(self._runtime_thread)
         self._runtime_thread.started.connect(self._runtime_worker.run)
+        self._runtime_worker.status_changed.connect(self.status_changed.emit)
         self._runtime_worker.finished.connect(self._on_runtime_started)
         self._runtime_worker.failed.connect(self._on_runtime_failed)
         self._runtime_worker.finished.connect(self._runtime_thread.quit)
@@ -188,18 +192,31 @@ class LocalAISetupService(QObject):
 
 
 class RuntimeStartWorker(QObject):
+    status_changed = Signal(str)
     finished = Signal(str)
     failed = Signal(str)
 
-    def __init__(self, runtime_manager: RuntimeManager, model_path: Path, context_tokens: int) -> None:
+    def __init__(
+        self,
+        runtime_manager: RuntimeManager,
+        model_path: Path,
+        context_tokens: int,
+        startup_timeout_seconds: int,
+    ) -> None:
         super().__init__()
         self._runtime_manager = runtime_manager
         self._model_path = model_path
         self._context_tokens = context_tokens
+        self._startup_timeout_seconds = startup_timeout_seconds
 
     @Slot()
     def run(self) -> None:
-        state = self._runtime_manager.start(self._model_path, self._context_tokens)
+        self.status_changed.emit("waiting_for_runtime")
+        state = self._runtime_manager.start(
+            self._model_path,
+            self._context_tokens,
+            self._startup_timeout_seconds,
+        )
         if state.status == "ready" and state.endpoint_url:
             self.finished.emit(state.endpoint_url)
             return

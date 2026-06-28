@@ -429,7 +429,7 @@
     },
     "ai_errors": {
       "disk_space_insufficient": "Spazio su disco insufficiente.",
-      "network_error": "Connessione Internet non disponibile per scaricare il modello.",
+      "network_error": "Errore di rete durante il download del modello. Controlla la connessione e riprova.",
       "download_failed": "Download non riuscito.",
       "file_error": "Errore durante la scrittura del file.",
       "checksum_failed": "Il modello scaricato non e valido.",
@@ -438,7 +438,9 @@
       "runtime_missing": "Motore AI locale non trovato.",
       "runtime_start_failed": "Impossibile avviare il motore AI locale.",
       "start_failed": "Impossibile avviare il motore AI locale.",
-      "readiness_timeout": "L'AI locale non ha risposto entro il tempo previsto."
+      "readiness_timeout": "L'AI locale non ha risposto entro il tempo previsto.",
+      "download_url_placeholder": "Il catalogo modelli usa ancora un URL placeholder. Inserisci un URL reale in app/ai/model_catalog.py prima di scaricare il modello.",
+      "http_error": "Il server del modello ha risposto con un errore. Controlla che l URL del modello sia corretto."
     }
   }
 }

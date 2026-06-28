@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlparse
 
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 
@@ -50,6 +51,10 @@ class LocalAISetupService(QObject):
         self.start_runtime(spec)
 
     def download_model(self, spec: LocalModelSpec, start_after_download: bool = False) -> None:
+        if self._is_placeholder_url(spec.download_url):
+            self._settings.set_ai_last_status("failed")
+            self.error_occurred.emit("download_url_placeholder")
+            return
         target = self._model_manager.get_model_path(spec)
         self.status_changed.emit("download_model")
         self._download_thread = QThread()
@@ -101,6 +106,13 @@ class LocalAISetupService(QObject):
     def _on_runtime_failed(self, error: str) -> None:
         self._settings.set_ai_last_status("failed")
         self.error_occurred.emit(error)
+
+    def _is_placeholder_url(self, url: str) -> bool:
+        try:
+            host = urlparse(url).hostname or ""
+        except ValueError:
+            return True
+        return host.lower() in {"example.com", "www.example.com"}
 
 
 class RuntimeStartWorker(QObject):

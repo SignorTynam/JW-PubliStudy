@@ -429,7 +429,7 @@
     },
     "ai_errors": {
       "disk_space_insufficient": "Insufficient disk space.",
-      "network_error": "Internet connection is not available to download the model.",
+      "network_error": "Network error while downloading the model. Check the connection and try again.",
       "download_failed": "Download failed.",
       "file_error": "File write error.",
       "checksum_failed": "The downloaded model is not valid.",
@@ -438,7 +438,9 @@
       "runtime_missing": "Local AI engine not found.",
       "runtime_start_failed": "The local AI engine could not be started.",
       "start_failed": "The local AI engine could not be started.",
-      "readiness_timeout": "Local AI did not respond in time."
+      "readiness_timeout": "Local AI did not respond in time.",
+      "download_url_placeholder": "The model catalog still uses a placeholder URL. Add a real URL in app/ai/model_catalog.py before downloading the model.",
+      "http_error": "The model server returned an error. Check that the model URL is correct."
     }
   }
 }

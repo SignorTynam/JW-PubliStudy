@@ -52,6 +52,9 @@ class DownloadWorker(QObject):
             part_path.replace(self._target_path)
             self.progress_changed.emit(100, self._target_path.stat().st_size, self._target_path.stat().st_size)
             self.finished.emit(str(self._target_path))
+        except urllib.error.HTTPError:
+            part_path.unlink(missing_ok=True)
+            self.failed.emit("http_error")
         except urllib.error.URLError:
             part_path.unlink(missing_ok=True)
             self.failed.emit("network_error")
@@ -68,4 +71,3 @@ class DownloadWorker(QObject):
             for block in iter(lambda: file.read(1024 * 1024), b""):
                 digest.update(block)
         return digest.hexdigest()
-

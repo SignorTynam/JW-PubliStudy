@@ -429,7 +429,7 @@
     },
     "ai_errors": {
       "disk_space_insufficient": "Hapesire disku e pamjaftueshme.",
-      "network_error": "Lidhja me internet nuk eshte e disponueshme per te shkarkuar modelin.",
+      "network_error": "Gabim rrjeti gjate shkarkimit te modelit. Kontrollo lidhjen dhe provo perseri.",
       "download_failed": "Shkarkimi deshtoi.",
       "file_error": "Gabim gjate shkrimit te skedarit.",
       "checksum_failed": "Modeli i shkarkuar nuk eshte i vlefshem.",
@@ -438,7 +438,9 @@
       "runtime_missing": "Motori lokal AI nuk u gjet.",
       "runtime_start_failed": "Motori lokal AI nuk mund te nisej.",
       "start_failed": "Motori lokal AI nuk mund te nisej.",
-      "readiness_timeout": "AI lokale nuk u pergjigj brenda kohes se pritur."
+      "readiness_timeout": "AI lokale nuk u pergjigj brenda kohes se pritur.",
+      "download_url_placeholder": "Katalogu i modeleve perdor ende nje URL placeholder. Vendos nje URL reale ne app/ai/model_catalog.py para se te shkarkosh modelin.",
+      "http_error": "Serveri i modelit ktheu nje gabim. Kontrollo qe URL e modelit te jete e sakte."
     }
   }
 }

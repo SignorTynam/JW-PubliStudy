@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "JW PubliStudy"
+  },
+  "nav": {
+    "home": "Home",
+    "publications": "Pubblicazioni",
+    "study": "Studio / Chat",
+    "settings": "Impostazioni"
+  },
+  "home": {
+    "title": "JW PubliStudy",
+    "subtitle": "Una base desktop locale per organizzare lo studio di pubblicazioni personali. In questa fase l'app prepara navigazione, impostazioni e struttura per le funzioni future.",
+    "card": {
+      "import": {
+        "title": "Carica pubblicazioni",
+        "description": "In una fase successiva potrai aggiungere e gestire le pubblicazioni da studiare."
+      },
+      "search": {
+        "title": "Cerca nelle fonti",
+        "description": "La ricerca nei documenti verra aggiunta quando saranno disponibili caricamento e indicizzazione."
+      },
+      "study": {
+        "title": "Studia con risposte citate",
+        "description": "Lo spazio di studio sara preparato per risposte con riferimenti chiari alle fonti locali."
+      }
+    }
+  },
+  "publications": {
+    "title": "Pubblicazioni",
+    "placeholder": "In una fase successiva qui sara possibile caricare, visualizzare e gestire le pubblicazioni personali. Per ora questa pagina e solo un segnaposto della struttura."
+  },
+  "study": {
+    "title": "Studio / Chat",
+    "placeholder": "In futuro questa area ospitera una chat di studio con AI locale e citazioni dalle pubblicazioni. In questa fase non sono presenti chat, modelli o chiamate AI."
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "language": "Lingua",
+    "language_description": "Scegli la lingua dell'interfaccia. La preferenza viene salvata localmente e applicata all'avvio successivo.",
+    "language_option": {
+      "it": "Italiano",
+      "al": "Shqip",
+      "en": "English"
+    }
+  }
+}

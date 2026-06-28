@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "JW PubliStudy"
+  },
+  "nav": {
+    "home": "Kreu",
+    "publications": "Botime",
+    "study": "Studim / Chat",
+    "settings": "Cilesimet"
+  },
+  "home": {
+    "title": "JW PubliStudy",
+    "subtitle": "Nje baze desktop lokale per te organizuar studimin e botimeve personale. Ne kete faze aplikacioni pergatit navigimin, cilesimet dhe strukturen per funksionet e ardhshme.",
+    "card": {
+      "import": {
+        "title": "Ngarko botime",
+        "description": "Ne nje faze te ardhshme do te mund te shtosh dhe te menaxhosh botimet per studim."
+      },
+      "search": {
+        "title": "Kerko ne burime",
+        "description": "Kerkimi ne dokumente do te shtohet kur ngarkimi dhe indeksimi te jene gati."
+      },
+      "study": {
+        "title": "Studio me pergjigje te cituara",
+        "description": "Hapesira e studimit do te pergatitet per pergjigje me referenca te qarta nga burimet lokale."
+      }
+    }
+  },
+  "publications": {
+    "title": "Botime",
+    "placeholder": "Ne nje faze te ardhshme ketu do te jete e mundur te ngarkosh, shikosh dhe menaxhosh botimet personale. Tani per tani kjo faqe eshte vetem nje vendmbajtes i struktures."
+  },
+  "study": {
+    "title": "Studim / Chat",
+    "placeholder": "Ne te ardhmen kjo zone do te kete nje chat studimi me AI lokale dhe citime nga botimet. Ne kete faze nuk ka chat, modele ose thirrje AI."
+  },
+  "settings": {
+    "title": "Cilesimet",
+    "language": "Gjuha",
+    "language_description": "Zgjidh gjuhen e nderfaqes. Preferenca ruhet lokalisht dhe zbatohet ne hapjen e ardhshme.",
+    "language_option": {
+      "it": "Italiano",
+      "al": "Shqip",
+      "en": "English"
+    }
+  }
+}

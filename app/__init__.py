@@ -1,0 +1,1 @@
+"""JW PubliStudy application package."""

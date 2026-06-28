@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "JW PubliStudy"
+  },
+  "nav": {
+    "home": "Home",
+    "publications": "Publications",
+    "study": "Study / Chat",
+    "settings": "Settings"
+  },
+  "home": {
+    "title": "JW PubliStudy",
+    "subtitle": "A local desktop foundation for organizing the study of personal publications. In this phase the app prepares navigation, settings, and structure for future features.",
+    "card": {
+      "import": {
+        "title": "Load publications",
+        "description": "In a later phase you will be able to add and manage the publications you want to study."
+      },
+      "search": {
+        "title": "Search sources",
+        "description": "Document search will be added after loading and indexing are available."
+      },
+      "study": {
+        "title": "Study with cited answers",
+        "description": "The study area will be prepared for answers with clear references to local sources."
+      }
+    }
+  },
+  "publications": {
+    "title": "Publications",
+    "placeholder": "In a later phase this page will let you load, view, and manage personal publications. For now it is only a placeholder for the application structure."
+  },
+  "study": {
+    "title": "Study / Chat",
+    "placeholder": "In the future this area will host a study chat with local AI and citations from publications. This phase does not include chat, models, or AI calls."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "language_description": "Choose the interface language. The preference is saved locally and applied the next time the app starts.",
+    "language_option": {
+      "it": "Italiano",
+      "al": "Shqip",
+      "en": "English"
+    }
+  }
+}

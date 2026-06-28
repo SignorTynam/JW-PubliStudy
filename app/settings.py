@@ -16,6 +16,14 @@ class AppSettings:
     LLM_MAX_TOKENS_KEY = "llm/max_tokens"
     LLM_TIMEOUT_SECONDS_KEY = "llm/timeout_seconds"
     RETRIEVAL_LIMIT_KEY = "llm/retrieval_limit"
+    AI_MODE_KEY = "ai/mode"
+    AI_SELECTED_MODEL_ID_KEY = "ai/selected_model_id"
+    AI_MODEL_PATH_KEY = "ai/model_path"
+    AI_RUNTIME_PATH_KEY = "ai/runtime_path"
+    AI_RUNTIME_ENDPOINT_KEY = "ai/runtime_endpoint"
+    AI_LAST_STATUS_KEY = "ai/last_status"
+    AI_MANUAL_ENDPOINT_URL_KEY = "ai/manual_endpoint_url"
+    AI_MANUAL_MODEL_NAME_KEY = "ai/manual_model_name"
 
     DEFAULT_LLM_ENDPOINT_URL = "http://localhost:1234/v1/chat/completions"
     DEFAULT_LLM_MODEL = "local-model"
@@ -23,6 +31,8 @@ class AppSettings:
     DEFAULT_LLM_MAX_TOKENS = 800
     DEFAULT_LLM_TIMEOUT_SECONDS = 120
     DEFAULT_RETRIEVAL_LIMIT = 6
+    DEFAULT_AI_MODE = "auto"
+    DEFAULT_AI_SELECTED_MODEL_ID = "small"
 
     def __init__(self) -> None:
         self._settings = QSettings("JW PubliStudy", "JW PubliStudy")
@@ -37,48 +47,40 @@ class AppSettings:
             self._settings.sync()
 
     def llm_endpoint_url(self) -> str:
-        value = self._settings.value(self.LLM_ENDPOINT_URL_KEY, self.DEFAULT_LLM_ENDPOINT_URL, str)
-        return value.strip() if isinstance(value, str) and value.strip() else self.DEFAULT_LLM_ENDPOINT_URL
+        return self.ai_manual_endpoint_url()
 
     def set_llm_endpoint_url(self, value: str) -> None:
-        self._settings.setValue(self.LLM_ENDPOINT_URL_KEY, value.strip() or self.DEFAULT_LLM_ENDPOINT_URL)
-        self._settings.sync()
+        self.set_ai_manual_endpoint_url(value)
 
     def llm_model(self) -> str:
-        value = self._settings.value(self.LLM_MODEL_KEY, self.DEFAULT_LLM_MODEL, str)
-        return value.strip() if isinstance(value, str) and value.strip() else self.DEFAULT_LLM_MODEL
+        return self.ai_manual_model_name()
 
     def set_llm_model(self, value: str) -> None:
-        self._settings.setValue(self.LLM_MODEL_KEY, value.strip() or self.DEFAULT_LLM_MODEL)
-        self._settings.sync()
+        self.set_ai_manual_model_name(value)
 
     def llm_temperature(self) -> float:
-        return self._bounded_float(self._settings.value(self.LLM_TEMPERATURE_KEY, self.DEFAULT_LLM_TEMPERATURE), 0.0, 1.0, self.DEFAULT_LLM_TEMPERATURE)
+        return self.ai_temperature()
 
     def set_llm_temperature(self, value: float) -> None:
-        self._settings.setValue(self.LLM_TEMPERATURE_KEY, self._clamp_float(value, 0.0, 1.0))
-        self._settings.sync()
+        self.set_ai_temperature(value)
 
     def llm_max_tokens(self) -> int:
-        return self._bounded_int(self._settings.value(self.LLM_MAX_TOKENS_KEY, self.DEFAULT_LLM_MAX_TOKENS), 128, 4096, self.DEFAULT_LLM_MAX_TOKENS)
+        return self.ai_max_tokens()
 
     def set_llm_max_tokens(self, value: int) -> None:
-        self._settings.setValue(self.LLM_MAX_TOKENS_KEY, self._clamp_int(value, 128, 4096))
-        self._settings.sync()
+        self.set_ai_max_tokens(value)
 
     def llm_timeout_seconds(self) -> int:
-        return self._bounded_int(self._settings.value(self.LLM_TIMEOUT_SECONDS_KEY, self.DEFAULT_LLM_TIMEOUT_SECONDS), 10, 300, self.DEFAULT_LLM_TIMEOUT_SECONDS)
+        return self.ai_timeout_seconds()
 
     def set_llm_timeout_seconds(self, value: int) -> None:
-        self._settings.setValue(self.LLM_TIMEOUT_SECONDS_KEY, self._clamp_int(value, 10, 300))
-        self._settings.sync()
+        self.set_ai_timeout_seconds(value)
 
     def retrieval_limit(self) -> int:
-        return self._bounded_int(self._settings.value(self.RETRIEVAL_LIMIT_KEY, self.DEFAULT_RETRIEVAL_LIMIT), 1, 12, self.DEFAULT_RETRIEVAL_LIMIT)
+        return self.ai_default_sources_count()
 
     def set_retrieval_limit(self, value: int) -> None:
-        self._settings.setValue(self.RETRIEVAL_LIMIT_KEY, self._clamp_int(value, 1, 12))
-        self._settings.sync()
+        self.set_ai_default_sources_count(value)
 
     def llm_config(self) -> LLMConfig:
         return LLMConfig(
@@ -90,12 +92,109 @@ class AppSettings:
         )
 
     def reset_llm_defaults(self) -> None:
-        self.set_llm_endpoint_url(self.DEFAULT_LLM_ENDPOINT_URL)
-        self.set_llm_model(self.DEFAULT_LLM_MODEL)
-        self.set_llm_temperature(self.DEFAULT_LLM_TEMPERATURE)
-        self.set_llm_max_tokens(self.DEFAULT_LLM_MAX_TOKENS)
-        self.set_llm_timeout_seconds(self.DEFAULT_LLM_TIMEOUT_SECONDS)
-        self.set_retrieval_limit(self.DEFAULT_RETRIEVAL_LIMIT)
+        self.set_ai_mode(self.DEFAULT_AI_MODE)
+        self.set_ai_manual_endpoint_url(self.DEFAULT_LLM_ENDPOINT_URL)
+        self.set_ai_manual_model_name(self.DEFAULT_LLM_MODEL)
+        self.set_ai_temperature(self.DEFAULT_LLM_TEMPERATURE)
+        self.set_ai_max_tokens(self.DEFAULT_LLM_MAX_TOKENS)
+        self.set_ai_timeout_seconds(self.DEFAULT_LLM_TIMEOUT_SECONDS)
+        self.set_ai_default_sources_count(self.DEFAULT_RETRIEVAL_LIMIT)
+
+    def ai_mode(self) -> str:
+        value = self._settings.value(self.AI_MODE_KEY, self.DEFAULT_AI_MODE, str)
+        return value if value in {"auto", "manual"} else self.DEFAULT_AI_MODE
+
+    def set_ai_mode(self, value: str) -> None:
+        self._settings.setValue(self.AI_MODE_KEY, value if value in {"auto", "manual"} else self.DEFAULT_AI_MODE)
+        self._settings.sync()
+
+    def ai_selected_model_id(self) -> str:
+        value = self._settings.value(self.AI_SELECTED_MODEL_ID_KEY, self.DEFAULT_AI_SELECTED_MODEL_ID, str)
+        return value.strip() if isinstance(value, str) and value.strip() else self.DEFAULT_AI_SELECTED_MODEL_ID
+
+    def set_ai_selected_model_id(self, value: str) -> None:
+        self._settings.setValue(self.AI_SELECTED_MODEL_ID_KEY, value.strip() or self.DEFAULT_AI_SELECTED_MODEL_ID)
+        self._settings.sync()
+
+    def ai_model_path(self) -> str:
+        return self._string_value(self.AI_MODEL_PATH_KEY, "")
+
+    def set_ai_model_path(self, value: str) -> None:
+        self._settings.setValue(self.AI_MODEL_PATH_KEY, value.strip())
+        self._settings.sync()
+
+    def ai_runtime_path(self) -> str:
+        return self._string_value(self.AI_RUNTIME_PATH_KEY, "")
+
+    def set_ai_runtime_path(self, value: str) -> None:
+        self._settings.setValue(self.AI_RUNTIME_PATH_KEY, value.strip())
+        self._settings.sync()
+
+    def ai_runtime_endpoint(self) -> str:
+        return self._string_value(self.AI_RUNTIME_ENDPOINT_KEY, "")
+
+    def set_ai_runtime_endpoint(self, value: str) -> None:
+        self._settings.setValue(self.AI_RUNTIME_ENDPOINT_KEY, value.strip())
+        self._settings.sync()
+
+    def ai_last_status(self) -> str:
+        return self._string_value(self.AI_LAST_STATUS_KEY, "not_configured")
+
+    def set_ai_last_status(self, value: str) -> None:
+        self._settings.setValue(self.AI_LAST_STATUS_KEY, value.strip() or "not_configured")
+        self._settings.sync()
+
+    def ai_manual_endpoint_url(self) -> str:
+        value = self._settings.value(self.AI_MANUAL_ENDPOINT_URL_KEY, None, str)
+        if not value:
+            value = self._settings.value(self.LLM_ENDPOINT_URL_KEY, self.DEFAULT_LLM_ENDPOINT_URL, str)
+        return value.strip() if isinstance(value, str) and value.strip() else self.DEFAULT_LLM_ENDPOINT_URL
+
+    def set_ai_manual_endpoint_url(self, value: str) -> None:
+        self._settings.setValue(self.AI_MANUAL_ENDPOINT_URL_KEY, value.strip() or self.DEFAULT_LLM_ENDPOINT_URL)
+        self._settings.sync()
+
+    def ai_manual_model_name(self) -> str:
+        value = self._settings.value(self.AI_MANUAL_MODEL_NAME_KEY, None, str)
+        if not value:
+            value = self._settings.value(self.LLM_MODEL_KEY, self.DEFAULT_LLM_MODEL, str)
+        return value.strip() if isinstance(value, str) and value.strip() else self.DEFAULT_LLM_MODEL
+
+    def set_ai_manual_model_name(self, value: str) -> None:
+        self._settings.setValue(self.AI_MANUAL_MODEL_NAME_KEY, value.strip() or self.DEFAULT_LLM_MODEL)
+        self._settings.sync()
+
+    def ai_temperature(self) -> float:
+        return self._bounded_float(self._settings.value(self.LLM_TEMPERATURE_KEY, self.DEFAULT_LLM_TEMPERATURE), 0.0, 1.0, self.DEFAULT_LLM_TEMPERATURE)
+
+    def set_ai_temperature(self, value: float) -> None:
+        self._settings.setValue(self.LLM_TEMPERATURE_KEY, self._clamp_float(value, 0.0, 1.0))
+        self._settings.sync()
+
+    def ai_max_tokens(self) -> int:
+        return self._bounded_int(self._settings.value(self.LLM_MAX_TOKENS_KEY, self.DEFAULT_LLM_MAX_TOKENS), 128, 4096, self.DEFAULT_LLM_MAX_TOKENS)
+
+    def set_ai_max_tokens(self, value: int) -> None:
+        self._settings.setValue(self.LLM_MAX_TOKENS_KEY, self._clamp_int(value, 128, 4096))
+        self._settings.sync()
+
+    def ai_timeout_seconds(self) -> int:
+        return self._bounded_int(self._settings.value(self.LLM_TIMEOUT_SECONDS_KEY, self.DEFAULT_LLM_TIMEOUT_SECONDS), 10, 300, self.DEFAULT_LLM_TIMEOUT_SECONDS)
+
+    def set_ai_timeout_seconds(self, value: int) -> None:
+        self._settings.setValue(self.LLM_TIMEOUT_SECONDS_KEY, self._clamp_int(value, 10, 300))
+        self._settings.sync()
+
+    def ai_default_sources_count(self) -> int:
+        return self._bounded_int(self._settings.value(self.RETRIEVAL_LIMIT_KEY, self.DEFAULT_RETRIEVAL_LIMIT), 1, 12, self.DEFAULT_RETRIEVAL_LIMIT)
+
+    def set_ai_default_sources_count(self, value: int) -> None:
+        self._settings.setValue(self.RETRIEVAL_LIMIT_KEY, self._clamp_int(value, 1, 12))
+        self._settings.sync()
+
+    def _string_value(self, key: str, fallback: str) -> str:
+        value = self._settings.value(key, fallback, str)
+        return value.strip() if isinstance(value, str) else fallback
 
     def _bounded_int(self, value: object, minimum: int, maximum: int, fallback: int) -> int:
         try:

@@ -4,6 +4,10 @@ from PySide6.QtCore import QRect
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
+from app.ai.ai_client import AIClient
+from app.ai.model_manager import ModelManager
+from app.ai.runtime_manager import RuntimeManager
+from app.ai.setup_service import LocalAISetupService
 from app.i18n import I18n
 from app.navigation import SidebarNavigation
 from app.pages.home_page import HomePage
@@ -13,7 +17,6 @@ from app.pages.study_page import StudyPage
 from app.services.chat_history_repository import ChatHistoryRepository
 from app.services.index_repository import IndexRepository
 from app.services.indexing_service import IndexingService
-from app.services.local_llm_client import LocalLLMClient
 from app.services.maintenance_service import MaintenanceService
 from app.services.publication_repository import PublicationRepository
 from app.services.rag_service import RagService
@@ -45,8 +48,11 @@ class MainWindow(QMainWindow):
         self._index_repository = IndexRepository(self._publication_repository.paths)
         self._indexing_service = IndexingService(self._publication_repository, self._index_repository)
         self._search_service = SearchService(self._publication_repository, self._index_repository)
-        self._llm_client = LocalLLMClient()
-        self._rag_service = RagService(self._search_service, self._llm_client)
+        self._model_manager = ModelManager(self._publication_repository.paths.app_data_dir)
+        self._runtime_manager = RuntimeManager(self._publication_repository.paths.app_data_dir, self._settings)
+        self._ai_client = AIClient(self._settings, self._model_manager, self._runtime_manager)
+        self._ai_setup_service = LocalAISetupService(self._settings, self._model_manager, self._runtime_manager)
+        self._rag_service = RagService(self._search_service, self._ai_client)
         self._chat_history_repository = ChatHistoryRepository(self._publication_repository.paths)
         self._maintenance_service = MaintenanceService(
             self._publication_repository,
@@ -98,16 +104,20 @@ class MainWindow(QMainWindow):
             self._rag_service,
             self._chat_history_repository,
             self._settings,
-            self._llm_client,
+            self._ai_client,
         )
         self._settings_page = SettingsPage(
             translations,
             self._settings,
-            self._llm_client,
+            self._ai_client,
             self._maintenance_service,
             self._publication_repository.paths,
+            self._model_manager,
+            self._runtime_manager,
+            self._ai_setup_service,
         )
         self._settings_page.language_changed.connect(self._change_language)
+        self._study_page.configure_ai_requested.connect(lambda: self._show_page("settings"))
 
         self._pages = (
             self._home_page,
@@ -160,3 +170,7 @@ class MainWindow(QMainWindow):
         frame_geometry = self.frameGeometry()
         frame_geometry.moveCenter(available_geometry.center())
         self.move(frame_geometry.topLeft())
+
+    def closeEvent(self, event) -> None:
+        self._runtime_manager.stop()
+        super().closeEvent(event)

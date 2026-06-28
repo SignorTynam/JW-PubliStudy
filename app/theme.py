@@ -336,6 +336,27 @@ def apply_theme(app: QApplication) -> None:
             color: #7a4d00;
         }
 
+        QProgressBar#AIProgress {
+            background: #edf1f6;
+            border: 1px solid #dbe3ee;
+            border-radius: 8px;
+            height: 16px;
+            text-align: center;
+            color: #172033;
+        }
+
+        QProgressBar#AIProgress::chunk {
+            background: #1d4f8f;
+            border-radius: 7px;
+        }
+
+        QCheckBox {
+            background: transparent;
+            color: #172033;
+            font-weight: 650;
+            spacing: 8px;
+        }
+
         QTextEdit#ChunkText,
         QTextBrowser#ChatHistory {
             background: #f8fafc;

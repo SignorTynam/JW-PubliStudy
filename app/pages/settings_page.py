@@ -5,6 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QScrollArea,
     QSpinBox,
@@ -20,9 +22,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.ai.ai_client import AIClient
+from app.ai.hardware_check import get_hardware_info
+from app.ai.model_catalog import LocalModelSpec, get_model, recommend_model
+from app.ai.model_manager import ModelManager
+from app.ai.runtime_manager import RuntimeManager
+from app.ai.setup_service import LocalAISetupService
 from app.i18n import I18n
 from app.paths import AppPaths
-from app.services.local_llm_client import LocalLLMClient, is_local_endpoint
+from app.services.local_llm_client import is_local_endpoint
 from app.services.maintenance_service import IntegrityReport, LibraryStats, MaintenanceResult, MaintenanceService
 from app.settings import AppSettings
 from app.version import APP_NAME, APP_STAGE, APP_VERSION
@@ -41,9 +49,12 @@ class SettingsPage(QWidget):
         self,
         translations: I18n,
         settings: AppSettings,
-        llm_client: LocalLLMClient,
+        llm_client: AIClient,
         maintenance_service: MaintenanceService,
         paths: AppPaths,
+        model_manager: ModelManager,
+        runtime_manager: RuntimeManager,
+        ai_setup_service: LocalAISetupService,
     ) -> None:
         super().__init__()
         self._translations = translations
@@ -51,7 +62,13 @@ class SettingsPage(QWidget):
         self._llm_client = llm_client
         self._maintenance_service = maintenance_service
         self._paths = paths
+        self._model_manager = model_manager
+        self._runtime_manager = runtime_manager
+        self._ai_setup_service = ai_setup_service
         self._maintenance_buttons: list[QPushButton] = []
+        self._ai_buttons: list[QPushButton] = []
+        self._recommended_model: LocalModelSpec | None = None
+        self._ai_status_message_key = ""
 
         self.setObjectName("Page")
         outer_layout = QVBoxLayout(self)
@@ -85,6 +102,7 @@ class SettingsPage(QWidget):
         outer_layout.addWidget(scroll)
 
         self._load_ai_settings()
+        self._connect_ai_setup_service()
         self.update_texts()
         self.refresh_stats()
 
@@ -104,6 +122,18 @@ class SettingsPage(QWidget):
 
         self._ai_title.setText(self._translations.t("settings.ai_section"))
         self._ai_description.setText(self._translations.t("settings.ai_description"))
+        self._ai_status_title.setText(self._translations.t("settings.ai_status"))
+        self._recommended_model_title.setText(self._translations.t("settings.ai_recommended_model"))
+        self._installed_model_title.setText(self._translations.t("settings.ai_installed_model"))
+        self._required_space_title.setText(self._translations.t("settings.ai_required_space"))
+        self._detected_ram_title.setText(self._translations.t("settings.ai_detected_ram"))
+        self._configure_ai_button.setText(self._translations.t("settings.ai_configure_auto"))
+        self._download_model_button.setText(self._translations.t("settings.ai_download_model"))
+        self._start_ai_button.setText(self._translations.t("settings.ai_start_local"))
+        self._test_ai_button.setText(self._translations.t("settings.ai_test"))
+        self._advanced_title.setText(self._translations.t("settings.ai_advanced_section"))
+        self._advanced_description.setText(self._translations.t("settings.ai_advanced_description"))
+        self._manual_mode_check.setText(self._translations.t("settings.ai_manual_mode"))
         self._ai_privacy.setText(self._privacy_text())
         self._endpoint_label.setText(self._translations.t("settings.ai.endpoint"))
         self._model_label.setText(self._translations.t("settings.ai.model"))
@@ -113,7 +143,7 @@ class SettingsPage(QWidget):
         self._retrieval_limit_label.setText(self._translations.t("settings.ai.retrieval_limit"))
         self._save_ai_button.setText(self._translations.t("settings.ai.save"))
         self._reset_ai_button.setText(self._translations.t("settings.ai.reset_defaults"))
-        self._test_ai_button.setText(self._translations.t("settings.ai.test_connection"))
+        self._test_manual_ai_button.setText(self._translations.t("settings.ai.test_connection"))
 
         self._data_title.setText(self._translations.t("settings.data_section"))
         self._data_description.setText(self._translations.t("settings.data_description"))
@@ -152,6 +182,7 @@ class SettingsPage(QWidget):
         self._chat_history_path.setText(str(self._paths.chat_history_file))
         self._render_stats(self._maintenance_service.get_library_stats())
         self._ai_privacy.setText(self._privacy_text())
+        self._refresh_ai_summary()
 
     def _build_language_section(self) -> QFrame:
         section = self._section()
@@ -171,11 +202,52 @@ class SettingsPage(QWidget):
         layout = QVBoxLayout(section)
         self._ai_title = self._section_title()
         self._ai_description = self._section_description()
+        layout.addWidget(self._ai_title)
+        layout.addWidget(self._ai_description)
+        self._ai_status_title, self._ai_status_value = self._summary_row(layout)
+        self._recommended_model_title, self._recommended_model_value = self._summary_row(layout)
+        self._installed_model_title, self._installed_model_value = self._summary_row(layout)
+        self._required_space_title, self._required_space_value = self._summary_row(layout)
+        self._detected_ram_title, self._detected_ram_value = self._summary_row(layout)
+        self._ai_progress = QProgressBar()
+        self._ai_progress.setRange(0, 100)
+        self._ai_progress.setValue(0)
+        self._ai_progress.setObjectName("AIProgress")
+        self._ai_status_message = QLabel()
+        self._ai_status_message.setObjectName("MaintenanceReport")
+        self._ai_status_message.setWordWrap(True)
         self._ai_privacy = QLabel()
         self._ai_privacy.setObjectName("PrivacyWarning")
         self._ai_privacy.setWordWrap(True)
-        layout.addWidget(self._ai_title)
-        layout.addWidget(self._ai_description)
+        layout.addWidget(self._ai_status_message)
+        layout.addWidget(self._ai_progress)
+        buttons = QHBoxLayout()
+        self._configure_ai_button = self._primary_button(self._configure_ai_automatically)
+        self._download_model_button = self._secondary_button(self._download_recommended_model)
+        self._start_ai_button = self._secondary_button(self._start_local_ai)
+        self._test_ai_button = self._secondary_button(self._test_ai_connection)
+        self._ai_buttons = [
+            self._configure_ai_button,
+            self._download_model_button,
+            self._start_ai_button,
+            self._test_ai_button,
+        ]
+        buttons.addWidget(self._configure_ai_button)
+        buttons.addWidget(self._download_model_button)
+        buttons.addWidget(self._start_ai_button)
+        buttons.addWidget(self._test_ai_button)
+        layout.addLayout(buttons)
+
+        advanced = QFrame()
+        advanced.setObjectName("ToolbarFrame")
+        advanced_layout = QVBoxLayout(advanced)
+        self._advanced_title = self._section_title()
+        self._advanced_description = self._section_description()
+        self._manual_mode_check = QCheckBox()
+        self._manual_mode_check.stateChanged.connect(lambda _state: self._on_manual_mode_changed())
+        advanced_layout.addWidget(self._advanced_title)
+        advanced_layout.addWidget(self._advanced_description)
+        advanced_layout.addWidget(self._manual_mode_check)
         layout.addWidget(self._ai_privacy)
         form = QFormLayout()
         self._endpoint_label = QLabel()
@@ -203,16 +275,17 @@ class SettingsPage(QWidget):
         form.addRow(self._max_tokens_label, self._max_tokens_input)
         form.addRow(self._timeout_label, self._timeout_input)
         form.addRow(self._retrieval_limit_label, self._retrieval_limit_input)
-        layout.addLayout(form)
-        buttons = QHBoxLayout()
-        buttons.addStretch(1)
+        advanced_layout.addLayout(form)
+        advanced_buttons = QHBoxLayout()
+        advanced_buttons.addStretch(1)
         self._reset_ai_button = self._secondary_button(self._reset_ai_settings)
-        self._test_ai_button = self._secondary_button(self._test_connection)
+        self._test_manual_ai_button = self._secondary_button(self._test_connection)
         self._save_ai_button = self._primary_button(self._save_ai_settings)
-        buttons.addWidget(self._reset_ai_button)
-        buttons.addWidget(self._test_ai_button)
-        buttons.addWidget(self._save_ai_button)
-        layout.addLayout(buttons)
+        advanced_buttons.addWidget(self._reset_ai_button)
+        advanced_buttons.addWidget(self._test_manual_ai_button)
+        advanced_buttons.addWidget(self._save_ai_button)
+        advanced_layout.addLayout(advanced_buttons)
+        layout.addWidget(advanced)
         return section
 
     def _build_data_section(self) -> QFrame:
@@ -296,24 +369,29 @@ class SettingsPage(QWidget):
         return section
 
     def _load_ai_settings(self) -> None:
-        self._endpoint_input.setText(self._settings.llm_endpoint_url())
-        self._model_input.setText(self._settings.llm_model())
-        self._temperature_input.setValue(self._settings.llm_temperature())
-        self._max_tokens_input.setValue(self._settings.llm_max_tokens())
-        self._timeout_input.setValue(self._settings.llm_timeout_seconds())
-        self._retrieval_limit_input.setValue(self._settings.retrieval_limit())
+        self._manual_mode_check.blockSignals(True)
+        self._manual_mode_check.setChecked(self._settings.ai_mode() == "manual")
+        self._manual_mode_check.blockSignals(False)
+        self._endpoint_input.setText(self._settings.ai_manual_endpoint_url())
+        self._model_input.setText(self._settings.ai_manual_model_name())
+        self._temperature_input.setValue(self._settings.ai_temperature())
+        self._max_tokens_input.setValue(self._settings.ai_max_tokens())
+        self._timeout_input.setValue(self._settings.ai_timeout_seconds())
+        self._retrieval_limit_input.setValue(self._settings.ai_default_sources_count())
+        self._update_advanced_enabled()
 
     def _save_ai_settings(self) -> None:
         self._persist_ai_settings()
         self._show_message("common.success", "settings.ai.saved")
 
     def _persist_ai_settings(self) -> None:
-        self._settings.set_llm_endpoint_url(self._endpoint_input.text())
-        self._settings.set_llm_model(self._model_input.text())
-        self._settings.set_llm_temperature(self._temperature_input.value())
-        self._settings.set_llm_max_tokens(self._max_tokens_input.value())
-        self._settings.set_llm_timeout_seconds(self._timeout_input.value())
-        self._settings.set_retrieval_limit(self._retrieval_limit_input.value())
+        self._settings.set_ai_mode("manual" if self._manual_mode_check.isChecked() else "auto")
+        self._settings.set_ai_manual_endpoint_url(self._endpoint_input.text())
+        self._settings.set_ai_manual_model_name(self._model_input.text())
+        self._settings.set_ai_temperature(self._temperature_input.value())
+        self._settings.set_ai_max_tokens(self._max_tokens_input.value())
+        self._settings.set_ai_timeout_seconds(self._timeout_input.value())
+        self._settings.set_ai_default_sources_count(self._retrieval_limit_input.value())
 
     def _reset_ai_settings(self) -> None:
         self._settings.reset_llm_defaults()
@@ -322,8 +400,98 @@ class SettingsPage(QWidget):
 
     def _test_connection(self) -> None:
         self._persist_ai_settings()
-        ok = self._llm_client.test_connection(self._settings.llm_config())
+        ok, _message = self._llm_client.test_connection(self._settings.llm_config())
         self._show_message("common.success" if ok else "common.error", "settings.ai.connection_success" if ok else "settings.ai.connection_failed")
+
+    def _test_ai_connection(self) -> None:
+        ok, _message = self._llm_client.test_connection(self._settings.llm_config())
+        self._show_message("common.success" if ok else "common.error", "settings.ai.connection_success" if ok else "settings.ai.connection_failed")
+
+    def _configure_ai_automatically(self) -> None:
+        self._set_ai_busy(True)
+        self._ai_progress.setValue(0)
+        self._ai_setup_service.configure_automatically()
+
+    def _download_recommended_model(self) -> None:
+        spec = self._recommended_model_or_fallback()
+        self._settings.set_ai_selected_model_id(spec.id)
+        if self._model_manager.is_model_ready(spec):
+            self._set_ai_status_text("settings.ai_status_messages.model_already_downloaded")
+            return
+        self._set_ai_busy(True)
+        self._ai_setup_service.download_model(spec)
+
+    def _start_local_ai(self) -> None:
+        spec = self._selected_model_or_fallback()
+        self._set_ai_busy(True)
+        self._ai_setup_service.start_runtime(spec)
+
+    def _connect_ai_setup_service(self) -> None:
+        self._ai_setup_service.status_changed.connect(self._on_ai_setup_status)
+        self._ai_setup_service.progress_changed.connect(self._ai_progress.setValue)
+        self._ai_setup_service.error_occurred.connect(self._on_ai_setup_error)
+        self._ai_setup_service.finished.connect(self._on_ai_setup_finished)
+
+    def _on_ai_setup_status(self, code: str) -> None:
+        self._set_ai_status_text(f"settings.ai_status_messages.{code}")
+        self._refresh_ai_summary()
+
+    def _on_ai_setup_error(self, code: str) -> None:
+        self._set_ai_busy(False)
+        self._set_ai_status_text(f"settings.ai_errors.{code}")
+        self._refresh_ai_summary()
+
+    def _on_ai_setup_finished(self) -> None:
+        self._set_ai_busy(False)
+        self._refresh_ai_summary()
+
+    def _on_manual_mode_changed(self) -> None:
+        self._settings.set_ai_mode("manual" if self._manual_mode_check.isChecked() else "auto")
+        self._update_advanced_enabled()
+        self._refresh_ai_summary()
+
+    def _refresh_ai_summary(self) -> None:
+        info = get_hardware_info(self._paths.app_data_dir)
+        self._recommended_model = recommend_model(info.total_ram_gb)
+        selected = self._selected_model_or_fallback()
+        state = self._model_manager.get_local_state(selected)
+        self._ai_status_value.setText(self._translations.t(f"settings.ai_status_values.{self._llm_client.status()}"))
+        self._recommended_model_value.setText(self._recommended_model.display_name)
+        self._installed_model_value.setText(selected.display_name if state.verified else self._translations.t("settings.ai_no_model_installed"))
+        self._required_space_value.setText(f"{selected.size_gb:.1f} GB")
+        self._detected_ram_value.setText(f"{info.total_ram_gb:.1f} GB")
+        if not self._ai_status_message_key or self._ai_status_message_key.startswith("settings.ai_status_help."):
+            self._set_ai_status_text(f"settings.ai_status_help.{self._llm_client.status()}")
+
+    def _selected_model_or_fallback(self) -> LocalModelSpec:
+        return get_model(self._settings.ai_selected_model_id()) or self._recommended_model_or_fallback()
+
+    def _recommended_model_or_fallback(self) -> LocalModelSpec:
+        if self._recommended_model is not None:
+            return self._recommended_model
+        info = get_hardware_info(self._paths.app_data_dir)
+        self._recommended_model = recommend_model(info.total_ram_gb)
+        return self._recommended_model
+
+    def _set_ai_busy(self, is_busy: bool) -> None:
+        for button in self._ai_buttons:
+            button.setEnabled(not is_busy)
+        if is_busy:
+            self._set_ai_status_text("settings.ai_status_messages.busy")
+
+    def _set_ai_status_text(self, key: str) -> None:
+        self._ai_status_message_key = key
+        text = self._translations.t(key)
+        self._ai_status_message.setText(text if text != key else key.rsplit(".", 1)[-1])
+
+    def _update_advanced_enabled(self) -> None:
+        is_manual = self._manual_mode_check.isChecked()
+        for widget in (
+            self._endpoint_input,
+            self._model_input,
+            self._test_manual_ai_button,
+        ):
+            widget.setEnabled(is_manual)
 
     def _check_integrity(self) -> None:
         report = self._maintenance_service.check_integrity()
@@ -391,7 +559,9 @@ class SettingsPage(QWidget):
         self._stats_text.setText("\n".join(lines))
 
     def _privacy_text(self) -> str:
-        endpoint = self._endpoint_input.text() if hasattr(self, "_endpoint_input") else self._settings.llm_endpoint_url()
+        if hasattr(self, "_manual_mode_check") and not self._manual_mode_check.isChecked():
+            return self._translations.t("settings.ai_privacy_local")
+        endpoint = self._endpoint_input.text() if hasattr(self, "_endpoint_input") else self._settings.ai_manual_endpoint_url()
         return self._translations.t("settings.ai_privacy_local" if is_local_endpoint(endpoint) else "settings.ai_privacy_remote_warning")
 
     def _format_bytes(self, size: int) -> str:
@@ -409,6 +579,18 @@ class SettingsPage(QWidget):
         value.setWordWrap(True)
         layout.addWidget(title)
         layout.addWidget(value)
+        return title, value
+
+    def _summary_row(self, layout: QVBoxLayout) -> tuple[QLabel, QLabel]:
+        row = QHBoxLayout()
+        title = QLabel()
+        title.setObjectName("FieldLabel")
+        value = QLabel()
+        value.setObjectName("DetailMeta")
+        value.setWordWrap(True)
+        row.addWidget(title)
+        row.addWidget(value, 1)
+        layout.addLayout(row)
         return title, value
 
     def _section(self) -> QFrame:

@@ -8,10 +8,10 @@ L'app permette di:
 - estrarre testo da TXT e PDF testuali;
 - indicizzare localmente i contenuti in blocchi JSONL;
 - cercare nelle fonti indicizzate;
-- usare una chat AI locale collegata a un endpoint compatibile OpenAI Chat Completions;
+- configurare e usare una chat AI locale gestita dall'app;
 - mostrare fonti, riferimenti e citazioni usate nelle risposte.
 
-Il progetto non usa cloud di default, non scarica modelli, non include OCR, non implementa embeddings, non usa ricerca vettoriale e non fa scraping da siti esterni.
+Il progetto non usa cloud di default, non include OCR, non implementa embeddings, non usa ricerca vettoriale e non fa scraping da siti esterni. Il download automatico e previsto solo per runtime/modelli AI locali configurati nel catalogo dell'app.
 
 ## Requisiti
 
@@ -106,16 +106,36 @@ La fase 5 non scarica modelli, non usa cloud di default, non implementa embeddin
 - Migliorie UX in Pubblicazioni, Ricerca e Chat
 - Script Windows semplici per avvio e setup sviluppo
 
-## Configurazione modello locale
+## AI locale automatica
 
-Per usare la chat bisogna avviare un server compatibile OpenAI Chat Completions, per esempio LM Studio o un server locale equivalente.
+JW PubliStudy prepara una configurazione AI locale gestita dall'app:
 
-Valori predefiniti:
+- controlla le caratteristiche del PC;
+- consiglia un modello small, medium o large;
+- salva i modelli nella directory dati locale, non nella repository;
+- avvia un runtime locale su `127.0.0.1` con porta libera;
+- usa la chat RAG solo sulle fonti indicizzate;
+- mantiene pubblicazioni, domande, indici e cronologia sul computer dell'utente.
 
-- Endpoint: `http://localhost:1234/v1/chat/completions`
-- Modello: `local-model`
+La prima configurazione puo richiedere tempo e spazio su disco. In questa fase gli URL dei modelli e del runtime sono placeholder centralizzati: se l'utente preme "Configura automaticamente" senza URL reali, l'app mostra un errore chiaro e non va in crash.
 
-Endpoint, modello, temperature, max tokens, timeout e numero di fonti si possono modificare nella pagina Impostazioni.
+### Per sviluppatori
+
+La nuova architettura si trova in `app/ai/`:
+
+- `hardware_check.py`: rileva sistema, architettura, RAM e spazio libero;
+- `model_catalog.py`: catalogo modelli e URL placeholder;
+- `model_manager.py`: percorsi, verifica e stato locale dei modelli;
+- `download_worker.py`: download asincrono PySide6 con file `.part`;
+- `runtime_manager.py`: ricerca/avvio runtime locale su `127.0.0.1`;
+- `ai_client.py`: client unico per modalita automatica e manuale;
+- `setup_service.py`: coordinamento della configurazione automatica.
+
+Gli URL reali dei modelli vanno inseriti in `app/ai/model_catalog.py`.
+L'URL reale del runtime va inserito in `app/ai/runtime_manager.py`.
+Il binario runtime bundled puo essere messo in `runtime/`, seguendo `runtime/README.md`.
+
+La modalita manuale resta disponibile nelle Impostazioni avanzate per sviluppo o test con server esterni compatibili OpenAI, per esempio LM Studio o Ollama. Non e la modalita richiesta all'utente finale.
 
 ## Dati locali
 
@@ -128,17 +148,19 @@ Dati principali:
 - `index/chunks/`: chunk indicizzati in formato JSONL
 - `index/index_manifest.json`: manifest opzionale dell'indice
 - `chat_history.json`: cronologia chat locale
+- `models/`: modelli AI locali scaricati dall'app
+- `runtime/`: runtime AI locale scaricato o incluso in futuro
 - QSettings: preferenze come lingua e configurazione modello locale
 
 ## Privacy
 
 - I file importati, l'indice e la cronologia restano sul computer dell'utente.
 - L'app non invia dati online automaticamente.
-- L'endpoint predefinito e `localhost`.
-- Domanda e fonti vengono inviate solo all'endpoint configurato.
-- Se l'utente configura un endpoint remoto, il trattamento dei dati diventa responsabilita dell'utente.
+- La modalita automatica usa solo `127.0.0.1` e non espone il runtime sulla rete locale.
+- Domanda e fonti vengono inviate solo al runtime locale automatico o all'endpoint manuale configurato.
+- Se l'utente abilita la modalita manuale con endpoint remoto, il trattamento dei dati diventa responsabilita dell'utente.
 - L'app non richiede API key e non salva API key.
-- Nessun modello AI viene scaricato automaticamente.
+- Nessun contenuto delle pubblicazioni viene inviato a servizi cloud dall'app.
 
 ## Test manuale consigliato
 
@@ -149,14 +171,23 @@ Dati principali:
 5. Indicizza le pubblicazioni.
 6. Cerca nella tab Ricerca.
 7. Copia un riferimento.
-8. Configura un modello locale.
-9. Testa la connessione.
+8. Apri Impostazioni e verifica la sezione AI locale.
+9. Premi Configura automaticamente senza URL reali e verifica l'errore gestito.
 10. Fai una domanda nella chat.
 11. Copia la risposta con fonti.
 12. Controlla l'integrita.
 13. Resetta l'indice.
 14. Reindicizza.
 15. Cancella la cronologia chat.
+16. Attiva la modalita manuale avanzata e testa un endpoint locale compatibile OpenAI, se disponibile.
+
+## Test automatici
+
+```bash
+python -m unittest discover -s tests
+```
+
+I test coprono catalogo modelli, classificazione hardware, gestione percorsi/verifica modelli e costruzione comando runtime senza usare `0.0.0.0`.
 
 ## Limiti attuali
 
@@ -165,7 +196,7 @@ Dati principali:
 - La ricerca delle fonti e testuale, non semantica.
 - Nessun OCR: i PDF scannerizzati senza testo potrebbero non essere indicizzabili.
 - Nessun cloud usato di default.
-- Nessun download automatico di modelli.
+- Gli URL di modelli e runtime sono ancora placeholder finche non vengono sostituiti con risorse reali e checksum.
 
 ## Packaging futuro
 

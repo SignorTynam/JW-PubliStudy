@@ -36,3 +36,8 @@ Thumbs.db
 /chat_history.json
 /logs/
 /data/
+/models/
+*.gguf
+*.part
+runtime/*
+!runtime/README.md

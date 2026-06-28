@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
+from app.ai.ai_client import AIClient
 from app.i18n import I18n
 from app.pages.chat_panel import ChatPanel
 from app.pages.search_panel import SearchPanel
 from app.services.chat_history_repository import ChatHistoryRepository
-from app.services.local_llm_client import LocalLLMClient
 from app.services.publication_repository import PublicationRepository
 from app.services.rag_service import RagService
 from app.services.search_service import SearchService
@@ -14,6 +15,8 @@ from app.settings import AppSettings
 
 
 class StudyPage(QWidget):
+    configure_ai_requested = Signal()
+
     def __init__(
         self,
         translations: I18n,
@@ -22,7 +25,7 @@ class StudyPage(QWidget):
         rag_service: RagService,
         chat_history_repository: ChatHistoryRepository,
         settings: AppSettings,
-        llm_client: LocalLLMClient,
+        llm_client: AIClient,
     ) -> None:
         super().__init__()
         self._translations = translations
@@ -46,6 +49,7 @@ class StudyPage(QWidget):
         )
         self._tabs.addTab(self._search_panel, "")
         self._tabs.addTab(self._chat_panel, "")
+        self._chat_panel.configure_ai_requested.connect(self.configure_ai_requested.emit)
         layout.addWidget(self._tabs)
 
         self.update_texts()

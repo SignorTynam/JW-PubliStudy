@@ -55,9 +55,23 @@ class AppPaths:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
+    @property
+    def models_dir(self) -> Path:
+        path = self.app_data_dir / "models"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def runtime_dir(self) -> Path:
+        path = self.app_data_dir / "runtime"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def ensure_all_dirs(self) -> None:
         self.app_data_dir.mkdir(parents=True, exist_ok=True)
         self.publications_dir.mkdir(parents=True, exist_ok=True)
         self.index_dir.mkdir(parents=True, exist_ok=True)
         self.chunks_dir.mkdir(parents=True, exist_ok=True)
         self.logs_dir.mkdir(parents=True, exist_ok=True)
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+        self.runtime_dir.mkdir(parents=True, exist_ok=True)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import html
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeySequence, QShortcut, QTextCursor
 from PySide6.QtWidgets import (
     QApplication,
@@ -18,18 +18,21 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.ai.ai_client import AIClient
+from app.ai.ai_status import AIStatus
 from app.i18n import I18n
 from app.models.chat_message import ChatMessage
 from app.models.chat_source import ChatSource
 from app.models.publication import Publication
 from app.services.chat_history_repository import ChatHistoryRepository
-from app.services.local_llm_client import LocalLLMClient, is_local_endpoint
+from app.services.local_llm_client import is_local_endpoint
 from app.services.rag_service import RagAnswer, RagService
 from app.services.search_service import SearchService
 from app.settings import AppSettings
 
 
 class ChatPanel(QWidget):
+    configure_ai_requested = Signal()
     LANGUAGE_FILTERS = (
         ("all", "chat.filters.all_languages"),
         ("it", "publications.language.it"),
@@ -46,7 +49,7 @@ class ChatPanel(QWidget):
         rag_service: RagService,
         chat_history_repository: ChatHistoryRepository,
         search_service: SearchService,
-        llm_client: LocalLLMClient,
+        llm_client: AIClient,
     ) -> None:
         super().__init__()
         self._translations = translations
@@ -92,7 +95,11 @@ class ChatPanel(QWidget):
         self._test_connection_button = QPushButton()
         self._test_connection_button.setObjectName("SecondaryButton")
         self._test_connection_button.clicked.connect(self._test_connection)
+        self._configure_ai_button = QPushButton()
+        self._configure_ai_button.setObjectName("PrimaryButton")
+        self._configure_ai_button.clicked.connect(self.configure_ai_requested.emit)
         model_layout.addWidget(self._model_status, 1)
+        model_layout.addWidget(self._configure_ai_button)
         model_layout.addWidget(self._test_connection_button)
         layout.addWidget(model_frame)
 
@@ -176,6 +183,7 @@ class ChatPanel(QWidget):
         self._title.setText(self._translations.t("chat.title"))
         self._description.setText(self._translations.t("chat.description"))
         self._test_connection_button.setText(self._translations.t("chat.model.test_connection"))
+        self._configure_ai_button.setText(self._translations.t("chat.configure_ai"))
         self._language_filter_label.setText(self._translations.t("chat.filters.language"))
         self._publication_filter_label.setText(self._translations.t("chat.filters.publication"))
         self._sources_count_label.setText(self._translations.t("chat.filters.sources_count"))
@@ -233,6 +241,9 @@ class ChatPanel(QWidget):
             return
         if not self._search_service.has_indexed_content():
             self._append_system_status("rag.no_indexed_publications")
+            return
+        if self._settings.ai_mode() != "manual" and not self._llm_client.is_ready():
+            self._append_system_status(f"chat.ai_status_help.{self._llm_client.status()}")
             return
 
         self._set_busy(True)
@@ -373,7 +384,7 @@ class ChatPanel(QWidget):
     def _test_connection(self) -> None:
         self._set_busy(True)
         QApplication.processEvents()
-        ok = self._llm_client.test_connection(self._settings.llm_config())
+        ok, _message = self._llm_client.test_connection(self._settings.llm_config())
         self._set_busy(False)
         self._append_system_status("chat.model.connection_success" if ok else "chat.model.connection_failed")
 
@@ -381,13 +392,19 @@ class ChatPanel(QWidget):
         self._sources_status.setText(self._translations.t(key))
 
     def _update_model_status(self) -> None:
-        endpoint = self._settings.llm_endpoint_url()
-        model = self._settings.llm_model()
-        status = self._translations.t("chat.model.not_configured") if not endpoint else self._translations.t("chat.model.status_title")
-        self._model_status.setText(
-            f"{status} | {self._translations.t('chat.model.endpoint')}: {endpoint} | {self._translations.t('chat.model.model')}: {model}"
-        )
-        self._privacy_warning.setVisible(bool(endpoint and not is_local_endpoint(endpoint)))
+        status = self._llm_client.status()
+        if self._settings.ai_mode() == "manual":
+            endpoint = self._settings.ai_manual_endpoint_url()
+            model = self._settings.ai_manual_model_name()
+            self._model_status.setText(
+                f"{self._translations.t('chat.manual_mode_active')} | {self._translations.t('chat.model.endpoint')}: {endpoint} | {self._translations.t('chat.model.model')}: {model}"
+            )
+            self._configure_ai_button.setVisible(True)
+            self._privacy_warning.setVisible(bool(endpoint and not is_local_endpoint(endpoint)))
+        else:
+            self._model_status.setText(self._translations.t(f"chat.ai_status.{status}"))
+            self._configure_ai_button.setVisible(status != AIStatus.READY)
+            self._privacy_warning.setVisible(False)
         self._privacy_warning.setText(self._translations.t("chat.remote_endpoint_warning"))
 
     def _set_busy(self, is_busy: bool) -> None:
@@ -397,6 +414,7 @@ class ChatPanel(QWidget):
         self._copy_last_button.setEnabled(not is_busy)
         self._copy_last_with_sources_button.setEnabled(not is_busy)
         self._test_connection_button.setEnabled(not is_busy)
+        self._configure_ai_button.setEnabled(not is_busy)
         self._input.setEnabled(not is_busy)
         if is_busy:
             self._append_system_status("chat.busy")

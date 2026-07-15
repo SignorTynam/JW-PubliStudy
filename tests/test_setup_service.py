@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from PySide6.QtCore import QCoreApplication
 
@@ -49,8 +50,10 @@ class SetupServiceTest(unittest.TestCase):
             runtime.parent.mkdir(parents=True)
             runtime.write_bytes(b"x" * 2048)
             settings = AppSettings("JW PubliStudy Tests", "SetupModelMissing")
-            service = TestableSetupService(settings, ModelManager(root), RuntimeManager(root, settings))
-            service.configure_automatically()
+            runtime_manager = RuntimeManager(root, settings)
+            service = TestableSetupService(settings, ModelManager(root), runtime_manager)
+            with patch.object(runtime_manager, "is_runtime_available", return_value=True):
+                service.configure_automatically()
             self.assertTrue(service.model_download_requested)
 
     def test_ready_model_and_runtime_starts_runtime(self) -> None:
@@ -63,8 +66,10 @@ class SetupServiceTest(unittest.TestCase):
             for model in list_models():
                 manager.get_model_path(model).write_bytes(b"x" * manager.MIN_PLAUSIBLE_MODEL_BYTES)
             settings = AppSettings("JW PubliStudy Tests", "SetupReady")
-            service = TestableSetupService(settings, manager, RuntimeManager(root, settings))
-            service.configure_automatically()
+            runtime_manager = RuntimeManager(root, settings)
+            service = TestableSetupService(settings, manager, runtime_manager)
+            with patch.object(runtime_manager, "is_runtime_available", return_value=True):
+                service.configure_automatically()
             self.assertTrue(service.runtime_start_requested)
 
 

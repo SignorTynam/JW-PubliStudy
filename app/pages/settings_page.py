@@ -8,6 +8,8 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -16,6 +18,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -72,6 +75,7 @@ class SettingsPage(QWidget):
         self._ai_file_buttons: list[QPushButton] = []
         self._recommended_model: LocalModelSpec | None = None
         self._ai_status_message_key = ""
+        self._ai_busy = False
         self._startup_elapsed_seconds = 0
         self._startup_timer = QTimer(self)
         self._startup_timer.setInterval(1000)
@@ -537,13 +541,13 @@ class SettingsPage(QWidget):
         )
         if not source_file:
             return
-        self._set_ai_status_text("settings.ai_status_messages.copying_local_file")
+        self._set_ai_status_text("settings.ai_status_messages.validating_local_runtime")
         try:
             target = self._runtime_manager.import_runtime_executable(Path(source_file))
         except FileNotFoundError:
             self._set_ai_status_text("settings.ai_runtime_file_missing")
             return
-        except (OSError, ValueError):
+        except (OSError, RuntimeError, ValueError):
             self._set_ai_status_text("settings.ai_invalid_runtime_file")
             return
         self._settings.set_ai_custom_runtime_path(str(target))
@@ -586,7 +590,7 @@ class SettingsPage(QWidget):
         self._set_ai_busy(False)
         self._set_progress_determinate(0)
         self._stop_elapsed_timer()
-        self._set_ai_status_text(f"settings.ai_errors.{code}")
+        self._set_ai_error_text(code)
         self._refresh_ai_summary()
 
     def _on_ai_setup_finished(self) -> None:
@@ -617,6 +621,7 @@ class SettingsPage(QWidget):
         self._detected_ram_value.setText(f"{info.total_ram_gb:.1f} GB")
         self._selected_local_model_value.setText(self._short_path(self._settings.ai_custom_model_path()) if self._settings.ai_use_custom_model() else self._translations.t("settings.ai_no_local_model_selected"))
         self._selected_runtime_value.setText(self._short_path(self._settings.ai_custom_runtime_path()) if self._settings.ai_use_custom_runtime() else self._translations.t("settings.ai_no_runtime_selected"))
+        self._test_ai_button.setEnabled(self._llm_client.is_ready() and not self._ai_busy)
         if not self._ai_status_message_key or self._ai_status_message_key.startswith("settings.ai_status_help."):
             self._set_ai_status_text(f"settings.ai_status_help.{self._llm_client.status()}")
 
@@ -631,8 +636,10 @@ class SettingsPage(QWidget):
         return self._recommended_model
 
     def _set_ai_busy(self, is_busy: bool) -> None:
+        self._ai_busy = is_busy
         for button in [*self._ai_buttons, *self._ai_file_buttons]:
             button.setEnabled(not is_busy)
+        self._test_ai_button.setEnabled(not is_busy and self._llm_client.is_ready())
         if is_busy:
             self._set_ai_status_text("settings.ai_status_messages.busy")
         else:
@@ -642,6 +649,21 @@ class SettingsPage(QWidget):
         self._ai_status_message_key = key
         text = self._translations.t(key)
         self._ai_status_message.setText(text if text != key else key.rsplit(".", 1)[-1])
+
+    def _set_ai_error_text(self, code: str) -> None:
+        key = f"settings.ai_errors.{code}"
+        self._ai_status_message_key = key
+        text = self._translations.t(key)
+        diagnostic = self._runtime_manager.get_state().diagnostic
+        values = {
+            "exit_code": diagnostic.exit_code if diagnostic and diagnostic.exit_code is not None else "?",
+            "winerror": diagnostic.winerror if diagnostic and diagnostic.winerror is not None else "?",
+        }
+        try:
+            text = text.format(**values)
+        except (KeyError, ValueError):
+            pass
+        self._ai_status_message.setText(text if text != key else code)
 
     def _update_advanced_enabled(self) -> None:
         is_manual = self._manual_mode_check.isChecked()
@@ -684,10 +706,19 @@ class SettingsPage(QWidget):
 
     def _show_runtime_logs(self) -> None:
         logs = self._runtime_manager.last_runtime_log_text()
-        dialog = QMessageBox(self)
+        dialog = QDialog(self)
         dialog.setWindowTitle(self._translations.t("settings.ai.runtime_logs_title"))
-        dialog.setText(logs if logs else self._translations.t("settings.ai.runtime_logs_empty"))
-        dialog.addButton(self._translations.t("common.ok"), QMessageBox.ButtonRole.AcceptRole)
+        dialog.resize(900, 600)
+        layout = QVBoxLayout(dialog)
+        text = QPlainTextEdit(dialog)
+        text.setReadOnly(True)
+        text.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        text.setPlainText(logs if logs else self._translations.t("settings.ai.runtime_logs_empty"))
+        text.moveCursor(text.textCursor().MoveOperation.End)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, parent=dialog)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(text)
+        layout.addWidget(buttons)
         dialog.exec()
 
     def _short_path(self, value: str) -> str:

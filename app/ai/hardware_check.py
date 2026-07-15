@@ -14,17 +14,20 @@ class HardwareInfo:
     total_ram_gb: float
     free_disk_gb: float
     data_dir: Path
+    available_ram_gb: float = 0.0
 
 
 def get_hardware_info(data_dir: Path) -> HardwareInfo:
     path = Path(data_dir)
     path.mkdir(parents=True, exist_ok=True)
+    total_ram_gb, available_ram_gb = _memory_gb()
     return HardwareInfo(
         os_name=platform.system() or "unknown",
         architecture=platform.machine() or "unknown",
-        total_ram_gb=_total_ram_gb(),
+        total_ram_gb=total_ram_gb,
         free_disk_gb=_free_disk_gb(path),
         data_dir=path,
+        available_ram_gb=available_ram_gb,
     )
 
 
@@ -37,6 +40,10 @@ def classify_machine(info: HardwareInfo) -> str:
 
 
 def _total_ram_gb() -> float:
+    return _memory_gb()[0]
+
+
+def _memory_gb() -> tuple[float, float]:
     if platform.system().lower() == "windows":
         try:
             class MEMORYSTATUSEX(ctypes.Structure):
@@ -55,10 +62,13 @@ def _total_ram_gb() -> float:
             status = MEMORYSTATUSEX()
             status.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
             if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
-                return round(status.ullTotalPhys / (1024**3), 1)
+                return (
+                    round(status.ullTotalPhys / (1024**3), 1),
+                    round(status.ullAvailPhys / (1024**3), 1),
+                )
         except (AttributeError, OSError, ValueError):
             pass
-    return 0.0
+    return 0.0, 0.0
 
 
 def _free_disk_gb(path: Path) -> float:
@@ -67,4 +77,3 @@ def _free_disk_gb(path: Path) -> float:
     except OSError:
         return 0.0
     return round(usage.free / (1024**3), 1)
-

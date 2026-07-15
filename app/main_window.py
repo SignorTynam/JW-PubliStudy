@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QRect
+from PySide6.QtCore import QRect, QTimer
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
@@ -52,7 +52,11 @@ class MainWindow(QMainWindow):
         self._runtime_manager = RuntimeManager(self._publication_repository.paths.app_data_dir, self._settings)
         self._ai_client = AIClient(self._settings, self._model_manager, self._runtime_manager)
         self._ai_setup_service = LocalAISetupService(self._settings, self._model_manager, self._runtime_manager)
-        self._rag_service = RagService(self._search_service, self._ai_client)
+        self._rag_service = RagService(
+            self._search_service,
+            self._ai_client,
+            profile_path=self._publication_repository.paths.app_data_dir / "ai_request_profile.json",
+        )
         self._chat_history_repository = ChatHistoryRepository(self._publication_repository.paths)
         self._maintenance_service = MaintenanceService(
             self._publication_repository,
@@ -61,6 +65,7 @@ class MainWindow(QMainWindow):
             self._chat_history_repository,
         )
         self._current_page = "home"
+        self._close_retry_scheduled = False
 
         self.resize(1100, 720)
         self.setMinimumSize(920, 620)
@@ -183,5 +188,17 @@ class MainWindow(QMainWindow):
         self.move(frame_geometry.topLeft())
 
     def closeEvent(self, event) -> None:
+        study_stopped = self._study_page.cancel_pending_request()
+        settings_stopped = self._settings_page.cancel_pending_request()
+        if not (study_stopped and settings_stopped):
+            event.ignore()
+            if not self._close_retry_scheduled:
+                self._close_retry_scheduled = True
+                QTimer.singleShot(100, self._retry_close)
+            return
         self._runtime_manager.stop()
         super().closeEvent(event)
+
+    def _retry_close(self) -> None:
+        self._close_retry_scheduled = False
+        self.close()

@@ -63,3 +63,6 @@ class StudyPage(QWidget):
         self._tabs.setTabText(1, self._translations.t("study.tabs.chat"))
         self._search_panel.update_texts()
         self._chat_panel.update_texts()
+
+    def cancel_pending_request(self, wait_ms: int = 0) -> bool:
+        return self._chat_panel.cancel_pending_request(wait_ms)

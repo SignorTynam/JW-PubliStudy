@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import html
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QThread, QTimer, Qt, Signal
 from PySide6.QtGui import QKeySequence, QShortcut, QTextCursor
 from PySide6.QtWidgets import (
     QApplication,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from app.ai.ai_client import AIClient
 from app.ai.ai_status import AIStatus
+from app.ai.chat_generation_worker import AIConnectionTestWorker, ChatGenerationWorker
 from app.i18n import I18n
 from app.models.chat_message import ChatMessage
 from app.models.chat_source import ChatSource
@@ -61,6 +62,17 @@ class ChatPanel(QWidget):
         self._searchable_publications: list[Publication] = []
         self._messages = self._chat_history_repository.list_messages()
         self._is_busy = False
+        self._busy_cancellable = False
+        self._pending_answer_text = ""
+        self._generation_thread: QThread | None = None
+        self._generation_worker: ChatGenerationWorker | None = None
+        self._connection_thread: QThread | None = None
+        self._connection_worker: AIConnectionTestWorker | None = None
+        self._close_retry_scheduled = False
+        self._stream_render_timer = QTimer(self)
+        self._stream_render_timer.setInterval(50)
+        self._stream_render_timer.setSingleShot(True)
+        self._stream_render_timer.timeout.connect(self._render_history)
 
         self.setObjectName("ChatPanel")
         layout = QVBoxLayout(self)
@@ -204,6 +216,11 @@ class ChatPanel(QWidget):
         self._populate_language_filter(selected_language)
         self._populate_publication_filter(selected_publication)
         self._populate_sources_count(selected_sources)
+        show_manual_source_limit = self._settings.ai_mode() == "manual"
+        self._sources_count_label.setVisible(show_manual_source_limit)
+        self._sources_count_combo.setVisible(show_manual_source_limit)
+        if self._is_busy and self._busy_cancellable:
+            self._send_button.setText(self._translations.t("chat.cancel_generation"))
         self._update_model_status()
         self.refresh_sources()
         self._render_history()
@@ -242,42 +259,107 @@ class ChatPanel(QWidget):
         self._sources_count_combo.blockSignals(False)
 
     def _send_question(self) -> None:
+        if self._is_busy:
+            if self._busy_cancellable:
+                self._cancel_generation()
+            return
         question = self._input.toPlainText().strip()
         if not question:
             self._append_system_status("rag.empty_question")
-            return
-        if not self._search_service.has_indexed_content():
-            self._append_system_status("rag.no_indexed_publications")
             return
         if self._settings.ai_mode() != "manual" and not self._llm_client.is_ready():
             self._append_system_status(f"chat.ai_status_help.{self._llm_client.status()}")
             return
 
-        self._set_busy(True)
+        self._set_busy(True, cancellable=True)
         user_message = ChatMessage.create("user", question)
         self._messages.append(user_message)
         self._chat_history_repository.save_messages(self._messages)
         self._input.clear()
         self._render_history()
-        QApplication.processEvents()
-
-        result = self._rag_service.answer_question(
-            question=question,
-            config=self._settings.llm_config(),
+        self._pending_answer_text = ""
+        self._generation_thread = QThread(self)
+        self._generation_worker = ChatGenerationWorker(
+            self._rag_service,
+            question,
             language=str(self._language_filter.currentData() or "all"),
             publication_id=str(self._publication_filter.currentData() or "all"),
-            retrieval_limit=int(self._sources_count_combo.currentData() or self._settings.retrieval_limit()),
+            retrieval_limit=self._settings.retrieval_limit() if self._settings.ai_mode() == "manual" else None,
         )
-        answer_text = self._answer_text(result)
+        worker = self._generation_worker
+        thread = self._generation_thread
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.phase_changed.connect(self._on_generation_phase)
+        worker.progress_changed.connect(self._on_generation_progress)
+        worker.retrying.connect(self._on_generation_retry)
+        worker.token_received.connect(self._on_generation_token)
+        worker.completed.connect(self._on_generation_completed)
+        worker.failed.connect(self._on_generation_failed)
+        worker.cancelled.connect(self._on_generation_cancelled)
+        for signal in (worker.completed, worker.failed, worker.cancelled):
+            signal.connect(thread.quit, Qt.ConnectionType.DirectConnection)
+            signal.connect(worker.deleteLater)
+        thread.finished.connect(self._on_generation_thread_finished)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
+    def _on_generation_phase(self, phase: str) -> None:
+        self._append_system_status(f"chat.request_phase.{phase}")
+
+    def _on_generation_progress(self, _progress: int) -> None:
+        return
+
+    def _on_generation_retry(self, _attempt: int, _reason: str) -> None:
+        self._stream_render_timer.stop()
+        self._pending_answer_text = ""
+        self._render_history()
+        self._append_system_status("chat.request_phase.retrying")
+
+    def _on_generation_token(self, token: str) -> None:
+        self._pending_answer_text += token
+        if not self._stream_render_timer.isActive():
+            self._stream_render_timer.start()
+
+    def _on_generation_completed(self, result: RagAnswer) -> None:
+        self._stream_render_timer.stop()
         assistant_message = ChatMessage.create(
             "assistant",
-            answer_text,
+            result.answer,
             [source.to_dict() for source in result.sources],
         )
         self._messages.append(assistant_message)
         self._chat_history_repository.save_messages(self._messages)
-        self._set_busy(False)
+        self._pending_answer_text = ""
         self._render_history()
+        self._append_system_status("chat.request_phase.completed")
+
+    def _on_generation_failed(self, result: RagAnswer) -> None:
+        self._stream_render_timer.stop()
+        self._pending_answer_text = ""
+        self._messages.append(ChatMessage.create("system", self._answer_text(result)))
+        self._chat_history_repository.save_messages(self._messages)
+        self._render_history()
+
+    def _on_generation_cancelled(self, _result: RagAnswer) -> None:
+        self._stream_render_timer.stop()
+        self._pending_answer_text = ""
+        self._messages.append(ChatMessage.create("system", self._translations.t("chat.request_errors.cancelled")))
+        self._chat_history_repository.save_messages(self._messages)
+        self._render_history()
+        self._append_system_status("chat.request_phase.cancelled")
+
+    def _on_generation_thread_finished(self) -> None:
+        self._generation_worker = None
+        self._generation_thread = None
+        self._set_busy(False)
+
+    def _cancel_generation(self) -> None:
+        if self._generation_worker is None:
+            return
+        self._append_system_status("chat.cancelling_generation")
+        self._send_button.setEnabled(False)
+        self._generation_worker.request_cancel()
 
     def _answer_text(self, result: RagAnswer) -> str:
         if result.error_message == "insufficient_sources":
@@ -288,6 +370,14 @@ class ChatPanel(QWidget):
             return self._translations.t("rag.no_indexed_publications")
         if result.error_message == "llm_error":
             return self._translations.t("chat.local_model_error")
+        if result.error is not None:
+            key = f"chat.request_errors.{result.error.code.value}"
+            translated = self._translations.t(key)
+            return translated if translated != key else self._translations.t("chat.request_errors.unknown_error")
+        if result.error_message:
+            key = f"chat.request_errors.{result.error_message}"
+            translated = self._translations.t(key)
+            return translated if translated != key else self._translations.t("chat.request_errors.unknown_error")
         return result.answer
 
     def _render_history(self) -> None:
@@ -297,8 +387,15 @@ class ChatPanel(QWidget):
 
         blocks: list[str] = []
         for message in self._messages:
-            label_key = "chat.user_label" if message.role == "user" else "chat.assistant_label"
-            class_name = "user-message" if message.role == "user" else "assistant-message"
+            if message.role == "user":
+                label_key = "chat.user_label"
+                class_name = "user-message"
+            elif message.role == "system":
+                label_key = "chat.system_label"
+                class_name = "system-message"
+            else:
+                label_key = "chat.assistant_label"
+                class_name = "assistant-message"
             blocks.append(
                 f"<div class='{class_name}'><b>{html.escape(self._translations.t(label_key))}</b>"
                 f"<p>{html.escape(message.content).replace(chr(10), '<br>')}</p></div>"
@@ -306,6 +403,11 @@ class ChatPanel(QWidget):
             if message.role == "assistant":
                 sources = [ChatSource.from_dict(source) for source in message.sources if isinstance(source, dict)]
                 blocks.append(self._render_sources(sources))
+        if self._pending_answer_text:
+            blocks.append(
+                f"<div class='assistant-message pending'><b>{html.escape(self._translations.t('chat.assistant_label'))}</b>"
+                f"<p>{html.escape(self._pending_answer_text).replace(chr(10), '<br>')}</p></div>"
+            )
         self._history.setHtml(self._history_css() + "".join(blocks))
         self._history.moveCursor(QTextCursor.MoveOperation.End)
 
@@ -346,7 +448,7 @@ class ChatPanel(QWidget):
             background: #f8fafc;
             line-height: 1.45;
         }
-        .user-message, .assistant-message, .sources {
+        .user-message, .assistant-message, .system-message, .sources {
             border: 1px solid #e2e8f0;
             border-radius: 14px;
             padding: 13px 15px;
@@ -361,6 +463,12 @@ class ChatPanel(QWidget):
             background: #ffffff;
             margin-right: 28px;
         }
+        .system-message {
+            background: #fff7ed;
+            border-color: #fed7aa;
+            color: #9a3412;
+        }
+        .pending { border-style: dashed; }
         .user-message b, .assistant-message b {
             color: #334155;
             font-size: 12px;
@@ -430,11 +538,30 @@ class ChatPanel(QWidget):
         self._append_system_status("chat.history_cleared")
 
     def _test_connection(self) -> None:
-        self._set_busy(True)
-        QApplication.processEvents()
-        ok, _message = self._llm_client.test_connection(self._settings.llm_config())
-        self._set_busy(False)
+        if self._is_busy:
+            return
+        self._set_busy(True, cancellable=False)
+        self._append_system_status("chat.model.testing_connection")
+        self._connection_thread = QThread(self)
+        self._connection_worker = AIConnectionTestWorker(self._llm_client)
+        worker = self._connection_worker
+        thread = self._connection_thread
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.completed.connect(self._on_connection_test_completed)
+        worker.completed.connect(thread.quit, Qt.ConnectionType.DirectConnection)
+        worker.completed.connect(worker.deleteLater)
+        thread.finished.connect(self._on_connection_thread_finished)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
+    def _on_connection_test_completed(self, ok: bool, _message: str) -> None:
         self._append_system_status("chat.model.connection_success" if ok else "chat.model.connection_failed")
+
+    def _on_connection_thread_finished(self) -> None:
+        self._connection_worker = None
+        self._connection_thread = None
+        self._set_busy(False)
 
     def _append_system_status(self, key: str) -> None:
         self._sources_status.setText(self._translations.t(key))
@@ -461,9 +588,13 @@ class ChatPanel(QWidget):
         self._model_status.style().unpolish(self._model_status)
         self._model_status.style().polish(self._model_status)
 
-    def _set_busy(self, is_busy: bool) -> None:
+    def _set_busy(self, is_busy: bool, *, cancellable: bool = False) -> None:
         self._is_busy = is_busy
-        self._send_button.setEnabled(not is_busy)
+        self._busy_cancellable = is_busy and cancellable
+        self._send_button.setEnabled(not is_busy or cancellable)
+        self._send_button.setText(
+            self._translations.t("chat.cancel_generation") if is_busy and cancellable else self._translations.t("chat.send")
+        )
         self._clear_button.setEnabled(not is_busy)
         self._copy_last_button.setEnabled(not is_busy)
         self._copy_last_with_sources_button.setEnabled(not is_busy)
@@ -472,3 +603,33 @@ class ChatPanel(QWidget):
         self._input.setEnabled(not is_busy)
         if is_busy:
             self._append_system_status("chat.busy")
+
+    def cancel_pending_request(self, wait_ms: int = 0) -> bool:
+        if self._generation_worker is not None:
+            self._generation_worker.request_cancel()
+        if self._connection_thread is not None and self._connection_thread.isRunning():
+            self._llm_client.cancel_active_request()
+        generation_stopped = True
+        connection_stopped = True
+        if self._generation_thread is not None and wait_ms > 0:
+            generation_stopped = self._generation_thread.wait(wait_ms)
+        elif self._generation_thread is not None:
+            generation_stopped = not self._generation_thread.isRunning()
+        if self._connection_thread is not None and wait_ms > 0:
+            connection_stopped = self._connection_thread.wait(wait_ms)
+        elif self._connection_thread is not None:
+            connection_stopped = not self._connection_thread.isRunning()
+        return generation_stopped and connection_stopped
+
+    def closeEvent(self, event) -> None:
+        if not self.cancel_pending_request():
+            event.ignore()
+            if not self._close_retry_scheduled:
+                self._close_retry_scheduled = True
+                QTimer.singleShot(100, self._retry_close)
+            return
+        super().closeEvent(event)
+
+    def _retry_close(self) -> None:
+        self._close_retry_scheduled = False
+        self.close()

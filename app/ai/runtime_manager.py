@@ -551,7 +551,14 @@ class RuntimeManager:
             str(context_tokens),
         ]
 
-    def start(self, model_path: Path, context_tokens: int, timeout_seconds: int | None = None) -> RuntimeState:
+    def start(
+        self,
+        model_path: Path,
+        context_tokens: int,
+        timeout_seconds: int | None = None,
+        *,
+        cancellation_event: threading.Event | None = None,
+    ) -> RuntimeState:
         if self._process is not None and self._process.poll() is None and self._state.endpoint_url:
             self._state.status = "ready"
             self._state.process_running = True
@@ -648,7 +655,7 @@ class RuntimeManager:
             return self._state
 
         self._state = RuntimeState("starting", endpoint_base + "/v1/chat/completions", port, True, diagnostic=diagnostic)
-        if self.wait_until_ready(endpoint_base, startup_timeout):
+        if self.wait_until_ready(endpoint_base, startup_timeout, cancellation_event=cancellation_event):
             diagnostic.readiness_attempts = self._readiness_attempts
             diagnostic.duration_seconds = self._startup_duration()
             diagnostic.stdout = self._tail_text(self._stdout_lines)
@@ -656,6 +663,15 @@ class RuntimeManager:
             self.record_event("readiness", f"ready=true attempts={self._readiness_attempts}")
             self._log_stream_summary(diagnostic)
             self._state = RuntimeState("ready", endpoint_base + "/v1/chat/completions", port, True, diagnostic=diagnostic)
+            return self._state
+
+        if cancellation_event is not None and cancellation_event.is_set():
+            diagnostic.readiness_attempts = self._readiness_attempts
+            diagnostic.duration_seconds = self._startup_duration()
+            diagnostic.error = "startup_cancelled"
+            self.record_event("readiness", f"cancelled=true attempts={self._readiness_attempts}")
+            self.stop()
+            self._state = RuntimeState("stopped", None, port, False, "startup_cancelled", diagnostic)
             return self._state
 
         if self._process is not None and self._process.poll() is not None:
@@ -688,9 +704,16 @@ class RuntimeManager:
         self._join_log_readers(0.25)
         self._state = RuntimeState("stopped", None, None, False)
 
-    def restart(self, model_path: Path, context_tokens: int, timeout_seconds: int | None = None) -> RuntimeState:
+    def restart(
+        self,
+        model_path: Path,
+        context_tokens: int,
+        timeout_seconds: int | None = None,
+        *,
+        cancellation_event: threading.Event | None = None,
+    ) -> RuntimeState:
         self.stop()
-        return self.start(model_path, context_tokens, timeout_seconds)
+        return self.start(model_path, context_tokens, timeout_seconds, cancellation_event=cancellation_event)
 
     def get_state(self) -> RuntimeState:
         if self._process is not None and self._process.poll() is not None and self._state.status in {"starting", "ready"}:
@@ -699,7 +722,13 @@ class RuntimeManager:
             return self._process_exit_state(endpoint_base, diagnostic)
         return self._state
 
-    def wait_until_ready(self, endpoint_base_url: str, timeout_seconds: int | None = None) -> bool:
+    def wait_until_ready(
+        self,
+        endpoint_base_url: str,
+        timeout_seconds: int | None = None,
+        *,
+        cancellation_event: threading.Event | None = None,
+    ) -> bool:
         timeout = self._resolve_startup_timeout(timeout_seconds)
         deadline = time.monotonic() + timeout
         urls = (
@@ -707,6 +736,9 @@ class RuntimeManager:
             endpoint_base_url.rstrip("/") + "/health",
         )
         while time.monotonic() < deadline:
+            if cancellation_event is not None and cancellation_event.is_set():
+                self.record_event("readiness", f"cancelled=true attempts={self._readiness_attempts}")
+                return False
             if self._process is not None and self._process.poll() is not None:
                 self.record_event("readiness", f"process_exited_before_ready attempts={self._readiness_attempts}")
                 return False
@@ -729,7 +761,12 @@ class RuntimeManager:
                         "readiness",
                         f"attempt={self._readiness_attempts} url={url} result={type(exc).__name__}",
                     )
-            time.sleep(1)
+            if cancellation_event is not None:
+                if cancellation_event.wait(1):
+                    self.record_event("readiness", f"cancelled=true attempts={self._readiness_attempts}")
+                    return False
+            else:
+                time.sleep(1)
         return False
 
     def last_runtime_logs(self) -> list[str]:

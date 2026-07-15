@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, QUrl, Signal
+from PySide6.QtCore import QThread, QTimer, Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.ai.ai_client import AIClient
+from app.ai.chat_generation_worker import AIConnectionTestWorker
 from app.ai.hardware_check import get_hardware_info
 from app.ai.model_catalog import LocalModelSpec, get_model, recommend_model
 from app.ai.model_manager import ModelManager
@@ -77,6 +78,8 @@ class SettingsPage(QWidget):
         self._ai_status_message_key = ""
         self._ai_busy = False
         self._startup_elapsed_seconds = 0
+        self._connection_thread: QThread | None = None
+        self._connection_worker: AIConnectionTestWorker | None = None
         self._startup_timer = QTimer(self)
         self._startup_timer.setInterval(1000)
         self._startup_timer.timeout.connect(self._update_startup_elapsed)
@@ -473,12 +476,37 @@ class SettingsPage(QWidget):
 
     def _test_connection(self) -> None:
         self._persist_ai_settings()
-        ok, _message = self._llm_client.test_connection(self._settings.llm_config())
+        self._start_connection_test()
+
+    def _start_connection_test(self) -> None:
+        if self._connection_thread is not None and self._connection_thread.isRunning():
+            return
+        self._test_manual_ai_button.setEnabled(False)
+        self._test_ai_button.setEnabled(False)
+        self._connection_thread = QThread(self)
+        self._connection_worker = AIConnectionTestWorker(self._llm_client)
+        worker = self._connection_worker
+        thread = self._connection_thread
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.completed.connect(self._on_connection_test_completed)
+        worker.completed.connect(thread.quit, Qt.ConnectionType.DirectConnection)
+        worker.completed.connect(worker.deleteLater)
+        thread.finished.connect(self._on_connection_test_thread_finished)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
+    def _on_connection_test_completed(self, ok: bool, _message: str) -> None:
         self._show_message("common.success" if ok else "common.error", "settings.ai.connection_success" if ok else "settings.ai.connection_failed")
 
+    def _on_connection_test_thread_finished(self) -> None:
+        self._connection_worker = None
+        self._connection_thread = None
+        self._update_advanced_enabled()
+        self._refresh_ai_summary()
+
     def _test_ai_connection(self) -> None:
-        ok, _message = self._llm_client.test_connection(self._settings.llm_config())
-        self._show_message("common.success" if ok else "common.error", "settings.ai.connection_success" if ok else "settings.ai.connection_failed")
+        self._start_connection_test()
 
     def _configure_ai_automatically(self) -> None:
         self._set_ai_busy(True)
@@ -668,11 +696,32 @@ class SettingsPage(QWidget):
     def _update_advanced_enabled(self) -> None:
         is_manual = self._manual_mode_check.isChecked()
         for widget in (
+            self._endpoint_label,
             self._endpoint_input,
+            self._model_label,
             self._model_input,
+            self._temperature_label,
+            self._temperature_input,
+            self._max_tokens_label,
+            self._max_tokens_input,
+            self._timeout_label,
+            self._timeout_input,
+            self._startup_timeout_label,
+            self._startup_timeout_input,
+            self._startup_timeout_help,
+            self._retrieval_limit_label,
+            self._retrieval_limit_input,
             self._test_manual_ai_button,
+            self._save_ai_button,
         ):
+            widget.setVisible(is_manual)
             widget.setEnabled(is_manual)
+
+    def cancel_pending_request(self, wait_ms: int = 0) -> bool:
+        if self._connection_thread is None or not self._connection_thread.isRunning():
+            return True
+        self._llm_client.cancel_active_request()
+        return self._connection_thread.wait(wait_ms) if wait_ms > 0 else False
 
     def _set_progress_indeterminate(self) -> None:
         self._ai_progress.setRange(0, 0)

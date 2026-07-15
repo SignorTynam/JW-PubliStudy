@@ -1,4 +1,5 @@
 import subprocess
+import threading
 import unittest
 import urllib.error
 import zipfile
@@ -453,6 +454,21 @@ class RuntimeManagerTest(unittest.TestCase):
             manager._process = process
             with patch("urllib.request.urlopen") as urlopen:
                 self.assertFalse(manager.wait_until_ready("http://127.0.0.1:12345", 120))
+            urlopen.assert_not_called()
+
+    def test_wait_until_ready_honors_cancellation_without_network_probe(self) -> None:
+        with TemporaryDirectory() as directory:
+            manager = RuntimeManager(Path(directory))
+            cancellation_event = threading.Event()
+            cancellation_event.set()
+            with patch("urllib.request.urlopen") as urlopen:
+                self.assertFalse(
+                    manager.wait_until_ready(
+                        "http://127.0.0.1:12345",
+                        120,
+                        cancellation_event=cancellation_event,
+                    )
+                )
             urlopen.assert_not_called()
 
     def test_stop_terminates_and_waits_for_process(self) -> None:

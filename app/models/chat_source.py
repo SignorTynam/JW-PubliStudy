@@ -20,6 +20,8 @@ class ChatSource:
     text: str
     snippet: str
     score: float
+    reduced: bool = False
+    original_text_length: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -35,6 +37,8 @@ class ChatSource:
             "text": self.text,
             "snippet": self.snippet,
             "score": self.score,
+            "reduced": self.reduced,
+            "original_text_length": self.original_text_length,
         }
 
     @classmethod
@@ -52,6 +56,8 @@ class ChatSource:
             text=result.text,
             snippet=result.snippet,
             score=result.score,
+            reduced=False,
+            original_text_length=len(result.text),
         )
 
     @classmethod
@@ -69,6 +75,8 @@ class ChatSource:
             text=_string_value(data.get("text"), ""),
             snippet=_string_value(data.get("snippet"), ""),
             score=_float_value(data.get("score"), 0.0),
+            reduced=bool(data.get("reduced", False)),
+            original_text_length=_optional_nonnegative_int(data.get("original_text_length")),
         )
 
     def format_reference(self) -> str:
@@ -99,6 +107,16 @@ def _optional_int(value: Any) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed > 0 else None
+
+
+def _optional_nonnegative_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
 
 
 def _float_value(value: Any, fallback: float) -> float:

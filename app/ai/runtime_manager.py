@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+import json
 import os
 import platform
 import re
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
 from app.settings import AppSettings
+from app.ai.runtime_launch_plan import BackendCapabilities, RuntimeLaunchPlan
 from app.version import APP_VERSION
 
 
@@ -75,6 +77,16 @@ class RuntimeDiagnostic:
     exception_message: str | None = None
     errno: int | None = None
     winerror: int | None = None
+    backend_id: str = "llama_cpp_cpu"
+    runtime_variant_id: str = "legacy"
+    device_id: str | None = None
+    host_architecture: str = "unknown"
+    executable_architecture: str = "unknown"
+    requires_emulation: bool = False
+    cpu_threads: int | None = None
+    gpu_layers: int | None = None
+    environment_keys: tuple[str, ...] = ()
+    selection_reasons: tuple[str, ...] = ()
 
 
 @dataclass
@@ -130,6 +142,9 @@ class RuntimeManager:
         configured = self._settings.ai_runtime_path() if self._settings is not None else ""
         if configured:
             candidates.append((Path(configured).expanduser(), True))
+        active_runtime = self._active_runtime_path()
+        if active_runtime is not None:
+            candidates.append((active_runtime, False))
         candidates.extend(
             [
                 (self.get_runtime_path(), False),
@@ -150,6 +165,15 @@ class RuntimeManager:
             if validated is not None:
                 return validated
         return None
+
+    def _active_runtime_path(self) -> Path | None:
+        active_path = self.runtime_dir() / "active.json"
+        try:
+            payload = json.loads(active_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        value = payload.get("executable") if isinstance(payload, dict) else None
+        return Path(value).expanduser() if isinstance(value, str) and value.strip() else None
 
     def _validated_candidate(self, path: Path, quarantine_legacy: bool) -> Path | None:
         validation = self.validate_runtime_installation(path)
@@ -287,6 +311,96 @@ class RuntimeManager:
             shutil.rmtree(staging, ignore_errors=True)
             if backup.exists() and not current.exists():
                 self._replace_path_with_retry(backup, current)
+
+    def install_runtime_variant_from_zip(self, zip_path: Path, variant_id: str, release_tag: str) -> Path:
+        """Install a complete distribution side-by-side without changing the active runtime."""
+        safe_variant = self._safe_directory_component(variant_id)
+        safe_release = self._safe_directory_component(release_tag or "unknown")
+        variant_root = self.runtime_dir() / safe_variant
+        target_directory = variant_root / safe_release
+        operation_id = uuid.uuid4().hex
+        extract_root = variant_root / f"_extracting-{operation_id}"
+        staging = variant_root / f"_installing-{operation_id}"
+        backup = variant_root / f"_backup-{operation_id}"
+        variant_root.mkdir(parents=True, exist_ok=True)
+        extract_root.mkdir(parents=True, exist_ok=False)
+        replaced = False
+        try:
+            with zipfile.ZipFile(zip_path) as archive:
+                self._safe_extract_zip(archive, extract_root)
+            executable = self._find_extracted_executable(extract_root)
+            if executable is None:
+                raise RuntimeError("runtime_executable_missing")
+            shutil.copytree(executable.parent, staging)
+            staged_executable = staging / executable.name
+            validation = self.validate_runtime_installation(staged_executable, use_cache=False)
+            self._log_validation(validation, "variant_installation_validation")
+            if not validation.valid:
+                raise RuntimeError(validation.error or "runtime_incomplete")
+            if target_directory.exists():
+                self._replace_path_with_retry(target_directory, backup)
+                replaced = True
+            try:
+                self._replace_path_with_retry(staging, target_directory)
+                target = (target_directory / executable.name).resolve(strict=False)
+                final_validation = self.validate_runtime_installation(target, use_cache=False)
+                self._log_validation(final_validation, "variant_installed_validation")
+                if not final_validation.valid:
+                    raise RuntimeError(final_validation.error or "runtime_incomplete")
+                self._store_validation_cache(target, final_validation)
+            except BaseException:
+                if target_directory.exists():
+                    shutil.rmtree(target_directory, ignore_errors=True)
+                if replaced and backup.exists():
+                    self._replace_path_with_retry(backup, target_directory)
+                raise
+            shutil.rmtree(backup, ignore_errors=True)
+            self.record_event(
+                "installation",
+                f"runtime_variant_installed variant={safe_variant} release={safe_release} path={target}",
+            )
+            return target
+        finally:
+            shutil.rmtree(extract_root, ignore_errors=True)
+            shutil.rmtree(staging, ignore_errors=True)
+            if backup.exists() and not target_directory.exists():
+                self._replace_path_with_retry(backup, target_directory)
+
+    def runtime_variant_path(self, variant_id: str, release_tag: str) -> Path:
+        return (
+            self.runtime_dir()
+            / self._safe_directory_component(variant_id)
+            / self._safe_directory_component(release_tag or "unknown")
+            / DEFAULT_RUNTIME_SPEC.executable_name
+        )
+
+    def activate_runtime(self, executable: Path, metadata: dict[str, object]) -> None:
+        path = Path(executable).expanduser().resolve(strict=False)
+        validation = self.validate_runtime_installation(path)
+        if not validation.valid:
+            raise RuntimeError(validation.error or "runtime_incomplete")
+        payload = {"executable": str(path), **metadata}
+        active_path = self.runtime_dir() / "active.json"
+        temporary = active_path.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        temporary.replace(active_path)
+        if self._settings is not None:
+            self._settings.set_ai_runtime_path(str(path))
+        self.record_event("configuration", f"runtime_activated path={path} variant={metadata.get('runtime_variant_id')}")
+
+    def migrate_legacy_runtime(self, variant_id: str = "llama_cpp_cpu_x86_64_generic") -> Path | None:
+        source = self.get_runtime_path()
+        if not source.is_file() or not self.validate_runtime_installation(source).valid:
+            return None
+        target_directory = self.runtime_dir() / self._safe_directory_component(variant_id) / "legacy"
+        target = target_directory / source.name
+        if target.is_file() and self.validate_runtime_installation(target).valid:
+            return target.resolve(strict=False)
+        temporary = target_directory.with_name(f"_installing-migration-{uuid.uuid4().hex}")
+        shutil.copytree(source.parent, temporary)
+        temporary.replace(target_directory)
+        self.record_event("migration", f"legacy_runtime_copied source={source} target={target}")
+        return target.resolve(strict=False)
 
     def _safe_extract_zip(self, archive: zipfile.ZipFile, destination: Path) -> None:
         root = destination.resolve()
@@ -538,6 +652,70 @@ class RuntimeManager:
             executable = self.get_runtime_path()
         return self._build_command(executable, model_path, port, context_tokens)
 
+    def probe_backend_capabilities(self, executable: Path) -> BackendCapabilities:
+        path = Path(executable).expanduser().resolve(strict=False)
+        probe = self._run_runtime_probe(path, "--help", self.RUNTIME_VALIDATION_TIMEOUT_SECONDS)
+        if isinstance(probe, RuntimeValidationResult):
+            return BackendCapabilities()
+        _code, stdout, stderr = probe
+        help_text = f"{stdout}\n{stderr}"
+        supported_flags = frozenset(re.findall(r"(?<!\w)(--[a-z0-9][a-z0-9-]*)", help_text.lower()))
+        devices: tuple[str, ...] = ()
+        if "--list-devices" in supported_flags:
+            devices = self._probe_runtime_devices(path)
+        return BackendCapabilities(
+            supports_device_selection="--device" in supported_flags,
+            supports_gpu_layers="--n-gpu-layers" in supported_flags,
+            available_devices=devices,
+            supported_flags=supported_flags,
+        )
+
+    def build_launch_command(
+        self,
+        plan: RuntimeLaunchPlan,
+        capabilities: BackendCapabilities | None = None,
+    ) -> list[str]:
+        capabilities = capabilities or BackendCapabilities()
+        command = self._build_command(plan.executable, plan.model_path, plan.port, plan.context_tokens)
+        arguments = list(plan.arguments)
+        index = 0
+        while index < len(arguments):
+            flag = arguments[index]
+            next_value = arguments[index + 1] if index + 1 < len(arguments) else None
+            value = next_value if next_value is not None and (
+                not next_value.startswith("-") or re.fullmatch(r"-?\d+(?:\.\d+)?", next_value)
+            ) else None
+            advance = 2 if value is not None else 1
+            if not flag.startswith("-"):
+                index += 1
+                continue
+            canonical = {"-ngl": "--n-gpu-layers", "-t": "--threads"}.get(flag, flag)
+            if canonical not in capabilities.supported_flags:
+                self.record_event("launch_plan", f"flag_skipped flag={flag} reason=unsupported")
+                index += advance
+                continue
+            if canonical == "--device" and (
+                not plan.device_id or plan.device_id not in capabilities.available_devices
+            ):
+                self.record_event("launch_plan", f"flag_skipped flag={flag} reason=device_not_listed")
+                index += advance
+                continue
+            if value is not None and ("/v1/chat/completions" in value or value.startswith(("http://", "https://"))):
+                self.record_event("launch_plan", f"argument_skipped flag={flag} reason=endpoint_not_allowed")
+                index += advance
+                continue
+            if canonical in {"--threads", "--n-gpu-layers"} and (
+                value is None or not re.fullmatch(r"-?\d+", value)
+            ):
+                self.record_event("launch_plan", f"flag_skipped flag={flag} reason=invalid_numeric_value")
+                index += advance
+                continue
+            command.append(flag)
+            if value is not None:
+                command.append(value)
+            index += advance
+        return command
+
     def _build_command(self, executable: Path, model_path: Path, port: int, context_tokens: int) -> list[str]:
         return [
             str(Path(executable).resolve(strict=False)),
@@ -558,16 +736,22 @@ class RuntimeManager:
         timeout_seconds: int | None = None,
         *,
         cancellation_event: threading.Event | None = None,
+        launch_plan: RuntimeLaunchPlan | None = None,
     ) -> RuntimeState:
         if self._process is not None and self._process.poll() is None and self._state.endpoint_url:
-            self._state.status = "ready"
-            self._state.process_running = True
-            return self._state
+            if launch_plan is not None:
+                # Recalculation must actually exercise the new plan (including
+                # context/device flags) before it can become active.
+                self.stop()
+            else:
+                self._state.status = "ready"
+                self._state.process_running = True
+                return self._state
 
         self._clear_runtime_logs()
         self._process_started_monotonic = time.monotonic()
         self._readiness_attempts = 0
-        resolved_model = Path(model_path).expanduser().resolve(strict=False)
+        resolved_model = Path(launch_plan.model_path if launch_plan else model_path).expanduser().resolve(strict=False)
         model_error, model_size = self._validate_model(resolved_model)
         if model_error:
             diagnostic = RuntimeDiagnostic(error=model_error, model_path=str(resolved_model), model_size=model_size)
@@ -575,7 +759,7 @@ class RuntimeManager:
             self._state = RuntimeState("failed", None, None, False, model_error, diagnostic)
             return self._state
 
-        executable = self.find_runtime_executable()
+        executable = Path(launch_plan.executable) if launch_plan else self.find_runtime_executable()
         if executable is None:
             error = self._last_validation.error if self._last_validation is not None else "runtime_missing"
             diagnostic = self._diagnostic_from_validation(self._last_validation, error, resolved_model, model_size)
@@ -601,29 +785,48 @@ class RuntimeManager:
             self._state = RuntimeState("failed", None, None, False, error, diagnostic)
             return self._state
 
-        port = self.find_free_port()
+        port = int(launch_plan.port) if launch_plan else self.find_free_port()
         endpoint_base = f"http://127.0.0.1:{port}"
-        command = self._build_command(executable, resolved_model, port, context_tokens)
+        capabilities = self.probe_backend_capabilities(executable) if launch_plan else None
+        command = (
+            self.build_launch_command(launch_plan, capabilities)
+            if launch_plan
+            else self._build_command(executable, resolved_model, port, context_tokens)
+        )
+        working_directory = Path(launch_plan.working_directory) if launch_plan else executable.parent
         startup_timeout = self._resolve_startup_timeout(timeout_seconds)
         started_at = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
         diagnostic = RuntimeDiagnostic(
             command=command,
             executable_path=str(executable),
             runtime_directory=str(executable.parent),
-            working_directory=str(executable.parent),
+            working_directory=str(working_directory),
             model_path=str(resolved_model),
             model_size=model_size,
             port=port,
             started_at=started_at,
             startup_timeout_seconds=startup_timeout,
+            backend_id=launch_plan.backend_id if launch_plan else "llama_cpp_cpu",
+            runtime_variant_id=launch_plan.runtime_variant_id if launch_plan else "legacy",
+            device_id=launch_plan.device_id if launch_plan else None,
+            host_architecture=launch_plan.host_architecture if launch_plan else platform.machine() or "unknown",
+            executable_architecture=launch_plan.executable_architecture if launch_plan else platform.machine() or "unknown",
+            requires_emulation=launch_plan.requires_emulation if launch_plan else False,
+            cpu_threads=launch_plan.cpu_threads if launch_plan else None,
+            gpu_layers=launch_plan.gpu_layers if launch_plan else None,
+            environment_keys=tuple(sorted(launch_plan.environment)) if launch_plan else (),
+            selection_reasons=launch_plan.selection_reasons if launch_plan else (),
         )
         self._log_startup_metadata(diagnostic)
 
         try:
             creationflags = subprocess.CREATE_NO_WINDOW if sys.platform.startswith("win") else 0
+            process_environment = os.environ.copy()
+            if launch_plan:
+                process_environment.update(launch_plan.environment)
             self._process = subprocess.Popen(
                 command,
-                cwd=str(executable.parent),
+                cwd=str(working_directory),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -632,6 +835,7 @@ class RuntimeManager:
                 bufsize=1,
                 creationflags=creationflags,
                 shell=False,
+                env=process_environment,
             )
             diagnostic.pid = self._process.pid
             self.record_event("process", f"pid={self._process.pid}")
@@ -648,7 +852,7 @@ class RuntimeManager:
                 "error",
                 f"error={error} exception_type={type(exc).__name__} message={exc} "
                 f"errno={diagnostic.errno} winerror={diagnostic.winerror} command={subprocess.list2cmdline(command)} "
-                f"working_directory={executable.parent}",
+                f"working_directory={working_directory}",
             )
             self.record_event("diagnostic", "stdout=<process_not_started> stderr=<process_not_started> exit_code=<not_available>")
             self._state = RuntimeState("failed", None, None, False, error, diagnostic)
@@ -688,6 +892,21 @@ class RuntimeManager:
         self._state = RuntimeState("failed", None, port, False, "startup_timeout", diagnostic)
         return self._state
 
+    def start_launch_plan(
+        self,
+        plan: RuntimeLaunchPlan,
+        timeout_seconds: int | None = None,
+        *,
+        cancellation_event: threading.Event | None = None,
+    ) -> RuntimeState:
+        return self.start(
+            plan.model_path,
+            plan.context_tokens,
+            timeout_seconds,
+            cancellation_event=cancellation_event,
+            launch_plan=plan,
+        )
+
     def stop(self) -> None:
         if self._process is not None and self._process.poll() is None:
             self.record_event("process", f"terminating_pid={self._process.pid}")
@@ -714,6 +933,16 @@ class RuntimeManager:
     ) -> RuntimeState:
         self.stop()
         return self.start(model_path, context_tokens, timeout_seconds, cancellation_event=cancellation_event)
+
+    def restart_launch_plan(
+        self,
+        plan: RuntimeLaunchPlan,
+        timeout_seconds: int | None = None,
+        *,
+        cancellation_event: threading.Event | None = None,
+    ) -> RuntimeState:
+        self.stop()
+        return self.start_launch_plan(plan, timeout_seconds, cancellation_event=cancellation_event)
 
     def get_state(self) -> RuntimeState:
         if self._process is not None and self._process.poll() is not None and self._state.status in {"starting", "ready"}:
@@ -949,6 +1178,15 @@ class RuntimeManager:
         self.record_event("system", f"host={diagnostic.host}")
         self.record_event("system", f"port={diagnostic.port}")
         self.record_event("system", f"startup_timeout_seconds={diagnostic.startup_timeout_seconds}")
+        self.record_event(
+            "selection",
+            f"backend={diagnostic.backend_id} runtime_variant={diagnostic.runtime_variant_id} "
+            f"host_architecture={diagnostic.host_architecture} executable_architecture={diagnostic.executable_architecture} "
+            f"emulation={diagnostic.requires_emulation} device={diagnostic.device_id} "
+            f"cpu_threads={diagnostic.cpu_threads} gpu_layers={diagnostic.gpu_layers} "
+            f"environment_keys={','.join(diagnostic.environment_keys) or 'none'} "
+            f"reasons={','.join(diagnostic.selection_reasons) or 'legacy'}",
+        )
 
     def _log_stream_summary(self, diagnostic: RuntimeDiagnostic) -> None:
         stdout_lines = diagnostic.stdout.splitlines()
@@ -1090,6 +1328,43 @@ class RuntimeManager:
         except (AttributeError, OSError, ValueError):
             pass
         return 0.0
+
+    def _probe_runtime_devices(self, executable: Path) -> tuple[str, ...]:
+        command = [str(executable), "--list-devices"]
+        try:
+            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform.startswith("win") else 0
+            completed = subprocess.run(
+                command,
+                cwd=str(executable.parent),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=self.RUNTIME_VALIDATION_TIMEOUT_SECONDS,
+                shell=False,
+                creationflags=creationflags,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return ()
+        devices: list[str] = []
+        for line in f"{completed.stdout}\n{completed.stderr}".splitlines():
+            cleaned = line.strip()
+            if not cleaned:
+                continue
+            # llama.cpp prints identifiers such as "Vulkan0: ...". Only the
+            # identifier is safe to feed back to --device.
+            match = re.match(r"^([A-Za-z][A-Za-z0-9_.-]*\d+)\s*:", cleaned)
+            if match:
+                devices.append(match.group(1))
+        return tuple(dict.fromkeys(devices[:32]))
+
+    def _safe_directory_component(self, value: str) -> str:
+        cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value or "").strip()).strip("._")
+        if not cleaned or cleaned.startswith("_"):
+            raise ValueError("runtime_directory_component_invalid")
+        return cleaned
 
     def _startup_duration(self) -> float:
         if self._process_started_monotonic is None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -141,7 +142,32 @@ class SettingsPage(QWidget):
         self._installed_model_title.setText(self._translations.t("settings.ai_installed_model"))
         self._required_space_title.setText(self._translations.t("settings.ai_required_space"))
         self._detected_ram_title.setText(self._translations.t("settings.ai_detected_ram"))
+        self._optimization_title.setText(self._translations.t("settings.ai_optimization"))
+        self._system_title.setText(self._translations.t("settings.ai_system"))
+        self._process_title.setText(self._translations.t("settings.ai_process"))
+        self._architecture_mode_title.setText(self._translations.t("settings.ai_architecture_mode"))
+        self._device_title.setText(self._translations.t("settings.ai_selected_device"))
+        self._backend_title.setText(self._translations.t("settings.ai_backend"))
+        self._selection_reason_title.setText(self._translations.t("settings.ai_selection_reason"))
+        self._fallback_title.setText(self._translations.t("settings.ai_fallback"))
+        self._npu_detected_title.setText(self._translations.t("settings.ai_npu_detected"))
+        self._npu_status_title.setText(self._translations.t("settings.ai_npu_status"))
+        self._optimization_profile_label.setText(self._translations.t("settings.ai_optimization_profile"))
+        current_mode = self._settings.ai_optimization_mode()
+        self._optimization_profile_combo.blockSignals(True)
+        self._optimization_profile_combo.clear()
+        for mode in ("automatic", "memory_saver", "performance"):
+            self._optimization_profile_combo.addItem(
+                self._translations.t(f"settings.ai_optimization_modes.{mode}"),
+                mode,
+            )
+        mode_index = self._optimization_profile_combo.findData(current_mode)
+        self._optimization_profile_combo.setCurrentIndex(max(0, mode_index))
+        self._optimization_profile_combo.blockSignals(False)
         self._configure_ai_button.setText(self._translations.t("settings.ai_configure_auto"))
+        self._recalculate_ai_button.setText(self._translations.t("settings.ai_recalculate"))
+        self._hardware_details_button.setText(self._translations.t("settings.ai_hardware_details"))
+        self._cancel_ai_setup_button.setText(self._translations.t("settings.ai_cancel_setup"))
         self._download_model_button.setText(self._translations.t("settings.ai_download_model"))
         self._start_ai_button.setText(self._translations.t("settings.ai_start_local"))
         self._test_ai_button.setText(self._translations.t("settings.ai_test"))
@@ -238,6 +264,24 @@ class SettingsPage(QWidget):
         self._installed_model_title, self._installed_model_value = self._summary_row(layout)
         self._required_space_title, self._required_space_value = self._summary_row(layout)
         self._detected_ram_title, self._detected_ram_value = self._summary_row(layout)
+        self._optimization_title, self._optimization_value = self._summary_row(layout)
+        self._system_title, self._system_value = self._summary_row(layout)
+        self._process_title, self._process_value = self._summary_row(layout)
+        self._architecture_mode_title, self._architecture_mode_value = self._summary_row(layout)
+        self._device_title, self._device_value = self._summary_row(layout)
+        self._backend_title, self._backend_value = self._summary_row(layout)
+        self._selection_reason_title, self._selection_reason_value = self._summary_row(layout)
+        self._fallback_title, self._fallback_value = self._summary_row(layout)
+        self._npu_detected_title, self._npu_detected_value = self._summary_row(layout)
+        self._npu_status_title, self._npu_status_value = self._summary_row(layout)
+        optimization_row = QHBoxLayout()
+        self._optimization_profile_label = QLabel()
+        self._optimization_profile_label.setObjectName("FieldLabel")
+        self._optimization_profile_combo = QComboBox()
+        self._optimization_profile_combo.currentIndexChanged.connect(self._on_optimization_mode_changed)
+        optimization_row.addWidget(self._optimization_profile_label)
+        optimization_row.addWidget(self._optimization_profile_combo, 1)
+        layout.addLayout(optimization_row)
         self._ai_progress = QProgressBar()
         self._ai_progress.setRange(0, 100)
         self._ai_progress.setValue(0)
@@ -254,22 +298,33 @@ class SettingsPage(QWidget):
         layout.addWidget(self._ai_status_message)
         layout.addWidget(self._ai_elapsed_time)
         layout.addWidget(self._ai_progress)
-        buttons = QHBoxLayout()
+        primary_buttons = QHBoxLayout()
+        secondary_buttons = QHBoxLayout()
         self._configure_ai_button = self._primary_button(self._configure_ai_automatically)
+        self._recalculate_ai_button = self._secondary_button(self._configure_ai_automatically)
+        self._hardware_details_button = self._secondary_button(self._show_hardware_details)
+        self._cancel_ai_setup_button = self._secondary_button(self._cancel_automatic_setup)
+        self._cancel_ai_setup_button.setVisible(False)
         self._download_model_button = self._secondary_button(self._download_recommended_model)
         self._start_ai_button = self._secondary_button(self._start_local_ai)
         self._test_ai_button = self._secondary_button(self._test_ai_connection)
         self._ai_buttons = [
             self._configure_ai_button,
+            self._recalculate_ai_button,
+            self._hardware_details_button,
             self._download_model_button,
             self._start_ai_button,
             self._test_ai_button,
         ]
-        buttons.addWidget(self._configure_ai_button)
-        buttons.addWidget(self._download_model_button)
-        buttons.addWidget(self._start_ai_button)
-        buttons.addWidget(self._test_ai_button)
-        layout.addLayout(buttons)
+        primary_buttons.addWidget(self._configure_ai_button)
+        primary_buttons.addWidget(self._recalculate_ai_button)
+        primary_buttons.addWidget(self._hardware_details_button)
+        primary_buttons.addWidget(self._cancel_ai_setup_button)
+        secondary_buttons.addWidget(self._download_model_button)
+        secondary_buttons.addWidget(self._start_ai_button)
+        secondary_buttons.addWidget(self._test_ai_button)
+        layout.addLayout(primary_buttons)
+        layout.addLayout(secondary_buttons)
 
         local_files = QFrame()
         local_files.setObjectName("SectionCard")
@@ -604,7 +659,17 @@ class SettingsPage(QWidget):
 
     def _on_ai_setup_status(self, code: str) -> None:
         self._set_ai_status_text(f"settings.ai_status_messages.{code}")
-        if code in {"starting_runtime", "loading_model", "waiting_for_runtime", "starting_with_local_files"}:
+        if code in {
+            "detecting_hardware",
+            "evaluating_backends",
+            "selecting_model",
+            "validating_backend",
+            "optimizing_configuration",
+            "starting_runtime",
+            "loading_model",
+            "waiting_for_runtime",
+            "starting_with_local_files",
+        }:
             self._set_progress_indeterminate()
             self._start_elapsed_timer()
         elif code in {"download_model", "download_started", "downloading_model", "downloading_runtime", "extracting_runtime"}:
@@ -647,6 +712,7 @@ class SettingsPage(QWidget):
         self._installed_model_value.setText(installed_model if state.verified else self._translations.t("settings.ai_no_model_installed"))
         self._required_space_value.setText(f"{selected.size_gb:.1f} GB")
         self._detected_ram_value.setText(f"{info.total_ram_gb:.1f} GB")
+        self._refresh_hardware_summary(info)
         self._selected_local_model_value.setText(self._short_path(self._settings.ai_custom_model_path()) if self._settings.ai_use_custom_model() else self._translations.t("settings.ai_no_local_model_selected"))
         self._selected_runtime_value.setText(self._short_path(self._settings.ai_custom_runtime_path()) if self._settings.ai_use_custom_runtime() else self._translations.t("settings.ai_no_runtime_selected"))
         self._test_ai_button.setEnabled(self._llm_client.is_ready() and not self._ai_busy)
@@ -663,11 +729,149 @@ class SettingsPage(QWidget):
         self._recommended_model = recommend_model(info.total_ram_gb)
         return self._recommended_model
 
+    def _refresh_hardware_summary(self, info) -> None:
+        profile = self._load_local_json(self._paths.app_data_dir / "ai_hardware_profile.json")
+        selection = self._load_local_json(self._paths.app_data_dir / "ai_backend_selection.json")
+        architecture = profile.get("architecture") if isinstance(profile.get("architecture"), dict) else {}
+        stored_native = self._settings.ai_native_architecture()
+        stored_process = self._settings.ai_process_architecture()
+        native = str(
+            selection.get("native_architecture")
+            or architecture.get("native_architecture")
+            or (stored_native if stored_native != "unknown" else "")
+            or info.architecture
+        )
+        process = str(
+            selection.get("process_architecture")
+            or architecture.get("process_architecture")
+            or (stored_process if stored_process != "unknown" else "")
+            or info.architecture
+        )
+        process_emulated = bool(architecture.get("running_under_emulation", False))
+        runtime_emulated = bool(
+            selection.get("running_under_emulation")
+            if "running_under_emulation" in selection
+            else self._settings.ai_running_under_emulation()
+        )
+        mode = self._settings.ai_optimization_mode()
+        self._optimization_value.setText(self._translations.t(f"settings.ai_optimization_modes.{mode}"))
+        os_name = str(profile.get("os_name") or info.os_name)
+        os_version = str(profile.get("os_version") or "").strip()
+        self._system_value.setText(" ".join(part for part in (os_name, os_version, native.upper()) if part))
+        if process_emulated:
+            process_text = self._translations.t("settings.ai_process_emulated").format(
+                process=process.upper(),
+                native=native.upper(),
+            )
+        elif runtime_emulated:
+            runtime_architecture = str(selection.get("runtime_architecture") or "x86_64")
+            process_text = self._translations.t("settings.ai_process_native_runtime_emulated").format(
+                process=process.upper(),
+                runtime=runtime_architecture.upper(),
+                native=native.upper(),
+            )
+        else:
+            process_text = self._translations.t("settings.ai_process_native").format(process=process.upper())
+        self._process_value.setText(process_text)
+        self._architecture_mode_value.setText(
+            self._translations.t("settings.ai_emulated" if process_emulated or runtime_emulated else "settings.ai_native")
+        )
+
+        backend_id = str(selection.get("selected_backend") or self._settings.ai_backend_id())
+        device_id = str(selection.get("selected_device") or self._settings.ai_device_id())
+        cpu_model = str(profile.get("cpu_model") or "CPU")
+        if backend_id.endswith("_cpu") and not device_id:
+            device_text = cpu_model
+        else:
+            device_text = device_id or self._translations.t("settings.ai_not_selected")
+        self._device_value.setText(device_text)
+        self._backend_value.setText(
+            self._backend_display_name(backend_id) if backend_id else self._translations.t("settings.ai_not_selected")
+        )
+        reasons = selection.get("reason_codes")
+        reason_code = str(reasons[0]) if isinstance(reasons, list) and reasons else "not_calculated"
+        reason_text = self._translations.t(f"settings.ai_reason_values.{reason_code}")
+        self._selection_reason_value.setText(reason_text if not reason_text.startswith("settings.") else reason_code)
+        fallbacks = selection.get("fallbacks")
+        if isinstance(fallbacks, list) and fallbacks:
+            fallback_text = ", ".join(self._backend_display_name(str(value)) for value in fallbacks)
+        else:
+            fallback_text = self._translations.t("settings.ai_none")
+        self._fallback_value.setText(fallback_text)
+
+        npu_devices = profile.get("npu_devices")
+        npu_names = [
+            str(item.get("name"))
+            for item in npu_devices
+            if isinstance(item, dict) and str(item.get("name") or "").strip()
+        ] if isinstance(npu_devices, list) else []
+        if npu_names:
+            self._npu_detected_value.setText(", ".join(npu_names))
+            self._npu_status_value.setText(self._translations.t("settings.ai_npu_detected_not_usable"))
+        else:
+            self._npu_detected_value.setText(self._translations.t("settings.ai_not_detected"))
+            self._npu_status_value.setText(self._translations.t("settings.ai_npu_not_used"))
+
+    def _backend_display_name(self, value: str) -> str:
+        labels = {
+            "llama_cpp_cpu": "llama.cpp CPU",
+            "llama_cpp_cuda": "llama.cpp CUDA",
+            "llama_cpp_vulkan": "llama.cpp Vulkan",
+            "llama_cpp_opencl": "llama.cpp OpenCL",
+            "llama_cpp_cpu_arm64": "llama.cpp CPU ARM64",
+            "llama_cpp_cpu_x86_64_generic": "llama.cpp CPU x64",
+            "llama_cpp_cpu_x86_64_avx2": "llama.cpp CPU x64 AVX2",
+            "llama_cpp_cuda_x86_64": "llama.cpp CUDA x64",
+            "llama_cpp_vulkan_x86_64": "llama.cpp Vulkan x64",
+        }
+        return labels.get(value, value.replace("_", " "))
+
+    def _on_optimization_mode_changed(self, _index: int) -> None:
+        mode = self._optimization_profile_combo.currentData()
+        if isinstance(mode, str):
+            self._settings.set_ai_optimization_mode(mode)
+            self._refresh_ai_summary()
+
+    def _cancel_automatic_setup(self) -> None:
+        self._ai_setup_service.cancel()
+        self._set_ai_status_text("settings.ai_status_messages.setup_cancelled")
+
+    def _show_hardware_details(self) -> None:
+        profile = self._load_local_json(self._paths.app_data_dir / "ai_hardware_profile.json")
+        selection = self._load_local_json(self._paths.app_data_dir / "ai_backend_selection.json")
+        details = {
+            "hardware_profile": profile or {"status": "not_calculated"},
+            "backend_selection": selection or {"status": "not_calculated"},
+        }
+        dialog = QDialog(self)
+        dialog.setWindowTitle(self._translations.t("settings.ai_hardware_details_title"))
+        dialog.resize(820, 580)
+        layout = QVBoxLayout(dialog)
+        text = QPlainTextEdit(dialog)
+        text.setReadOnly(True)
+        text.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        text.setPlainText(json.dumps(details, indent=2, ensure_ascii=False, sort_keys=True))
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, parent=dialog)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(text)
+        layout.addWidget(buttons)
+        dialog.exec()
+
+    def _load_local_json(self, path: Path) -> dict:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+        return payload if isinstance(payload, dict) else {}
+
     def _set_ai_busy(self, is_busy: bool) -> None:
         self._ai_busy = is_busy
         for button in [*self._ai_buttons, *self._ai_file_buttons]:
             button.setEnabled(not is_busy)
         self._test_ai_button.setEnabled(not is_busy and self._llm_client.is_ready())
+        self._optimization_profile_combo.setEnabled(not is_busy)
+        self._cancel_ai_setup_button.setVisible(is_busy)
+        self._cancel_ai_setup_button.setEnabled(is_busy)
         if is_busy:
             self._set_ai_status_text("settings.ai_status_messages.busy")
         else:
@@ -718,10 +922,15 @@ class SettingsPage(QWidget):
             widget.setEnabled(is_manual)
 
     def cancel_pending_request(self, wait_ms: int = 0) -> bool:
+        setup_stopped = True
+        if self._ai_setup_service.is_busy():
+            self._ai_setup_service.cancel()
+            setup_stopped = self._ai_setup_service.wait_for_shutdown(wait_ms)
         if self._connection_thread is None or not self._connection_thread.isRunning():
-            return True
+            return setup_stopped
         self._llm_client.cancel_active_request()
-        return self._connection_thread.wait(wait_ms) if wait_ms > 0 else False
+        connection_stopped = self._connection_thread.wait(wait_ms) if wait_ms > 0 else False
+        return setup_stopped and connection_stopped
 
     def _set_progress_indeterminate(self) -> None:
         self._ai_progress.setRange(0, 0)

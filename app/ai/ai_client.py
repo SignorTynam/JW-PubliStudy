@@ -10,6 +10,8 @@ from app.ai.ai_status import AIStatus
 from app.ai.hardware_check import get_hardware_info
 from app.ai.model_catalog import get_model
 from app.ai.model_manager import ModelManager
+from app.ai.runtime_catalog import get_runtime_variant
+from app.ai.runtime_launch_plan import RuntimeLaunchPlan
 from app.ai.runtime_manager import RuntimeManager
 from app.services.local_llm_client import (
     LLMChatResult,
@@ -105,7 +107,11 @@ class AIClient:
         return RequestEnvironment(
             model_id=model_id,
             model_name=model_name,
-            context_window=selected.context_tokens if selected else 4096,
+            context_window=(
+                self._settings.ai_selected_context_tokens()
+                if self._settings.ai_mode() != "manual"
+                else selected.context_tokens if selected else 4096
+            ),
             default_output_tokens=selected.default_max_tokens if selected else 600,
             total_ram_gb=hardware.total_ram_gb,
             available_ram_gb=hardware.available_ram_gb,
@@ -157,18 +163,58 @@ class AIClient:
         selected = get_model(self._settings.ai_selected_model_id()) or get_model("small")
         if self._settings.ai_use_custom_model():
             model_path = Path(self._settings.ai_custom_model_path())
-            context_tokens = selected.context_tokens if selected else 4096
+            context_tokens = self._settings.ai_selected_context_tokens()
         elif selected is not None:
             model_path = self._model_manager.get_model_path(selected)
-            context_tokens = selected.context_tokens
+            context_tokens = self._settings.ai_selected_context_tokens()
         else:
             return False
-        state = self._runtime_manager.restart(
-            model_path,
-            context_tokens,
+        if not self._settings.ai_backend_id():
+            state = self._runtime_manager.restart(
+                model_path,
+                context_tokens,
+                self._settings.ai_startup_timeout_seconds(),
+                cancellation_event=cancellation_event,
+            )
+            return self._handle_restart_state(state, cancellation_event)
+        executable = self._runtime_manager.find_runtime_executable()
+        if executable is None:
+            return False
+        arguments: list[str] = ["--threads", str(self._settings.ai_selected_cpu_threads())]
+        gpu_layers = self._settings.ai_selected_gpu_layers()
+        if gpu_layers is not None:
+            arguments.extend(("--n-gpu-layers", str(gpu_layers)))
+        device_id = self._settings.ai_device_id() or None
+        if device_id:
+            arguments.extend(("--device", device_id))
+        variant = get_runtime_variant(self._settings.ai_runtime_variant_id())
+        plan = RuntimeLaunchPlan(
+            backend_id=self._settings.ai_backend_id() or "llama_cpp_cpu",
+            runtime_variant_id=self._settings.ai_runtime_variant_id() or "legacy",
+            executable=executable,
+            model_path=model_path,
+            host="127.0.0.1",
+            port=self._runtime_manager.find_free_port(),
+            context_tokens=context_tokens,
+            device_id=device_id,
+            arguments=tuple(arguments),
+            environment={},
+            working_directory=executable.parent,
+            requires_emulation=self._settings.ai_running_under_emulation(),
+            cpu_threads=self._settings.ai_selected_cpu_threads(),
+            gpu_layers=gpu_layers,
+            host_architecture=self._settings.ai_native_architecture(),
+            executable_architecture=variant.architecture if variant else "unknown",
+            selection_reasons=("persisted_validated_selection",),
+        )
+        state = self._runtime_manager.restart_launch_plan(
+            plan,
             self._settings.ai_startup_timeout_seconds(),
             cancellation_event=cancellation_event,
         )
+        return self._handle_restart_state(state, cancellation_event)
+
+    def _handle_restart_state(self, state, cancellation_event: threading.Event | None) -> bool:
         if cancellation_event is not None and cancellation_event.is_set():
             return False
         if state.status == "ready" and state.endpoint_url:

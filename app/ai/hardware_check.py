@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import ctypes
-import platform
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
+
+from app.ai.hardware_profile import get_hardware_profile, memory_gb
 
 
 @dataclass(frozen=True)
@@ -18,16 +17,14 @@ class HardwareInfo:
 
 
 def get_hardware_info(data_dir: Path) -> HardwareInfo:
-    path = Path(data_dir)
-    path.mkdir(parents=True, exist_ok=True)
-    total_ram_gb, available_ram_gb = _memory_gb()
+    profile = get_hardware_profile(data_dir, detect_devices=False)
     return HardwareInfo(
-        os_name=platform.system() or "unknown",
-        architecture=platform.machine() or "unknown",
-        total_ram_gb=total_ram_gb,
-        free_disk_gb=_free_disk_gb(path),
-        data_dir=path,
-        available_ram_gb=available_ram_gb,
+        os_name=profile.os_name,
+        architecture=profile.architecture.native_architecture,
+        total_ram_gb=profile.total_ram_gb,
+        free_disk_gb=profile.free_disk_gb,
+        data_dir=profile.data_dir,
+        available_ram_gb=profile.available_ram_gb,
     )
 
 
@@ -44,36 +41,4 @@ def _total_ram_gb() -> float:
 
 
 def _memory_gb() -> tuple[float, float]:
-    if platform.system().lower() == "windows":
-        try:
-            class MEMORYSTATUSEX(ctypes.Structure):
-                _fields_ = [
-                    ("dwLength", ctypes.c_ulong),
-                    ("dwMemoryLoad", ctypes.c_ulong),
-                    ("ullTotalPhys", ctypes.c_ulonglong),
-                    ("ullAvailPhys", ctypes.c_ulonglong),
-                    ("ullTotalPageFile", ctypes.c_ulonglong),
-                    ("ullAvailPageFile", ctypes.c_ulonglong),
-                    ("ullTotalVirtual", ctypes.c_ulonglong),
-                    ("ullAvailVirtual", ctypes.c_ulonglong),
-                    ("sullAvailExtendedVirtual", ctypes.c_ulonglong),
-                ]
-
-            status = MEMORYSTATUSEX()
-            status.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
-            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
-                return (
-                    round(status.ullTotalPhys / (1024**3), 1),
-                    round(status.ullAvailPhys / (1024**3), 1),
-                )
-        except (AttributeError, OSError, ValueError):
-            pass
-    return 0.0, 0.0
-
-
-def _free_disk_gb(path: Path) -> float:
-    try:
-        usage = shutil.disk_usage(path)
-    except OSError:
-        return 0.0
-    return round(usage.free / (1024**3), 1)
+    return memory_gb()

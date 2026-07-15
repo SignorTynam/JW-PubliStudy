@@ -30,6 +30,20 @@ class AppSettings:
     AI_CUSTOM_RUNTIME_PATH_KEY = "ai/custom_runtime_path"
     AI_USE_CUSTOM_RUNTIME_KEY = "ai/use_custom_runtime"
     AI_STARTUP_TIMEOUT_SECONDS_KEY = "ai/startup_timeout_seconds"
+    AI_HARDWARE_FINGERPRINT_KEY = "ai/hardware_fingerprint"
+    AI_OPTIMIZATION_MODE_KEY = "ai/optimization_mode"
+    AI_BACKEND_ID_KEY = "ai/backend_id"
+    AI_RUNTIME_VARIANT_ID_KEY = "ai/runtime_variant_id"
+    AI_DEVICE_ID_KEY = "ai/device_id"
+    AI_NATIVE_ARCHITECTURE_KEY = "ai/native_architecture"
+    AI_PROCESS_ARCHITECTURE_KEY = "ai/process_architecture"
+    AI_RUNNING_UNDER_EMULATION_KEY = "ai/running_under_emulation"
+    AI_SELECTED_CONTEXT_TOKENS_KEY = "ai/selected_context_tokens"
+    AI_SELECTED_CPU_THREADS_KEY = "ai/selected_cpu_threads"
+    AI_SELECTED_GPU_LAYERS_KEY = "ai/selected_gpu_layers"
+    AI_BACKEND_SELECTION_VERSION_KEY = "ai/backend_selection_version"
+    AI_LAST_BACKEND_FAILURE_KEY = "ai/last_backend_failure"
+    AI_EXPERIMENTAL_BACKENDS_ENABLED_KEY = "ai/experimental_backends_enabled"
 
     DEFAULT_LLM_ENDPOINT_URL = "http://localhost:1234/v1/chat/completions"
     DEFAULT_LLM_MODEL = "local-model"
@@ -40,6 +54,9 @@ class AppSettings:
     DEFAULT_AI_MODE = "auto"
     DEFAULT_AI_SELECTED_MODEL_ID = "small"
     DEFAULT_AI_STARTUP_TIMEOUT_SECONDS = 600
+    DEFAULT_AI_OPTIMIZATION_MODE = "automatic"
+    DEFAULT_AI_SELECTED_CONTEXT_TOKENS = 4096
+    BACKEND_SELECTION_VERSION = 1
 
     def __init__(self, organization: str = "JW PubliStudy", application: str = "JW PubliStudy") -> None:
         self._settings = QSettings(organization, application)
@@ -107,6 +124,7 @@ class AppSettings:
         self.set_ai_timeout_seconds(self.DEFAULT_LLM_TIMEOUT_SECONDS)
         self.set_ai_default_sources_count(self.DEFAULT_RETRIEVAL_LIMIT)
         self.set_ai_startup_timeout_seconds(self.DEFAULT_AI_STARTUP_TIMEOUT_SECONDS)
+        self.set_ai_optimization_mode(self.DEFAULT_AI_OPTIMIZATION_MODE)
 
     def ai_mode(self) -> str:
         value = self._settings.value(self.AI_MODE_KEY, self.DEFAULT_AI_MODE, str)
@@ -212,6 +230,141 @@ class AppSettings:
         self._settings.setValue(self.AI_STARTUP_TIMEOUT_SECONDS_KEY, self._clamp_int(value, 120, 1800))
         self._settings.sync()
 
+    def ai_hardware_fingerprint(self) -> str:
+        return self._string_value(self.AI_HARDWARE_FINGERPRINT_KEY, "")
+
+    def set_ai_hardware_fingerprint(self, value: str) -> None:
+        self._set_string(self.AI_HARDWARE_FINGERPRINT_KEY, value)
+
+    def ai_optimization_mode(self) -> str:
+        value = self._string_value(self.AI_OPTIMIZATION_MODE_KEY, self.DEFAULT_AI_OPTIMIZATION_MODE)
+        return value if value in {"automatic", "memory_saver", "performance"} else self.DEFAULT_AI_OPTIMIZATION_MODE
+
+    def set_ai_optimization_mode(self, value: str) -> None:
+        normalized = value if value in {"automatic", "memory_saver", "performance"} else self.DEFAULT_AI_OPTIMIZATION_MODE
+        self._set_string(self.AI_OPTIMIZATION_MODE_KEY, normalized)
+
+    def ai_backend_id(self) -> str:
+        return self._string_value(self.AI_BACKEND_ID_KEY, "")
+
+    def set_ai_backend_id(self, value: str) -> None:
+        self._set_string(self.AI_BACKEND_ID_KEY, value)
+
+    def ai_runtime_variant_id(self) -> str:
+        return self._string_value(self.AI_RUNTIME_VARIANT_ID_KEY, "")
+
+    def set_ai_runtime_variant_id(self, value: str) -> None:
+        self._set_string(self.AI_RUNTIME_VARIANT_ID_KEY, value)
+
+    def ai_device_id(self) -> str:
+        return self._string_value(self.AI_DEVICE_ID_KEY, "")
+
+    def set_ai_device_id(self, value: str) -> None:
+        self._set_string(self.AI_DEVICE_ID_KEY, value)
+
+    def ai_native_architecture(self) -> str:
+        return self._string_value(self.AI_NATIVE_ARCHITECTURE_KEY, "unknown")
+
+    def set_ai_native_architecture(self, value: str) -> None:
+        self._set_string(self.AI_NATIVE_ARCHITECTURE_KEY, value)
+
+    def ai_process_architecture(self) -> str:
+        return self._string_value(self.AI_PROCESS_ARCHITECTURE_KEY, "unknown")
+
+    def set_ai_process_architecture(self, value: str) -> None:
+        self._set_string(self.AI_PROCESS_ARCHITECTURE_KEY, value)
+
+    def ai_running_under_emulation(self) -> bool:
+        return self._bool_value(self.AI_RUNNING_UNDER_EMULATION_KEY, False)
+
+    def set_ai_running_under_emulation(self, value: bool) -> None:
+        self._set_bool(self.AI_RUNNING_UNDER_EMULATION_KEY, value)
+
+    def ai_selected_context_tokens(self) -> int:
+        return self._bounded_int(
+            self._settings.value(self.AI_SELECTED_CONTEXT_TOKENS_KEY, self.DEFAULT_AI_SELECTED_CONTEXT_TOKENS),
+            512,
+            32768,
+            self.DEFAULT_AI_SELECTED_CONTEXT_TOKENS,
+        )
+
+    def set_ai_selected_context_tokens(self, value: int) -> None:
+        self._set_int(self.AI_SELECTED_CONTEXT_TOKENS_KEY, self._clamp_int(value, 512, 32768))
+
+    def ai_selected_cpu_threads(self) -> int:
+        return self._bounded_int(self._settings.value(self.AI_SELECTED_CPU_THREADS_KEY, 1), 1, 512, 1)
+
+    def set_ai_selected_cpu_threads(self, value: int) -> None:
+        self._set_int(self.AI_SELECTED_CPU_THREADS_KEY, self._clamp_int(value, 1, 512))
+
+    def ai_selected_gpu_layers(self) -> int | None:
+        value = self._settings.value(self.AI_SELECTED_GPU_LAYERS_KEY, "")
+        if value in {None, ""}:
+            return None
+        try:
+            return max(0, min(999, int(value)))
+        except (TypeError, ValueError):
+            return None
+
+    def set_ai_selected_gpu_layers(self, value: int | None) -> None:
+        self._settings.setValue(self.AI_SELECTED_GPU_LAYERS_KEY, "" if value is None else max(0, min(999, int(value))))
+        self._settings.sync()
+
+    def ai_backend_selection_version(self) -> int:
+        return self._bounded_int(
+            self._settings.value(self.AI_BACKEND_SELECTION_VERSION_KEY, self.BACKEND_SELECTION_VERSION),
+            1,
+            999,
+            self.BACKEND_SELECTION_VERSION,
+        )
+
+    def set_ai_backend_selection_version(self, value: int) -> None:
+        self._set_int(self.AI_BACKEND_SELECTION_VERSION_KEY, max(1, int(value)))
+
+    def ai_last_backend_failure(self) -> str:
+        return self._string_value(self.AI_LAST_BACKEND_FAILURE_KEY, "")
+
+    def set_ai_last_backend_failure(self, value: str) -> None:
+        self._set_string(self.AI_LAST_BACKEND_FAILURE_KEY, value)
+
+    def ai_experimental_backends_enabled(self) -> bool:
+        return self._bool_value(self.AI_EXPERIMENTAL_BACKENDS_ENABLED_KEY, False)
+
+    def set_ai_experimental_backends_enabled(self, value: bool) -> None:
+        self._set_bool(self.AI_EXPERIMENTAL_BACKENDS_ENABLED_KEY, value)
+
+    def save_ai_backend_selection(
+        self,
+        *,
+        hardware_fingerprint: str,
+        backend_id: str,
+        runtime_variant_id: str,
+        device_id: str | None,
+        native_architecture: str,
+        process_architecture: str,
+        running_under_emulation: bool,
+        context_tokens: int,
+        cpu_threads: int,
+        gpu_layers: int | None,
+    ) -> None:
+        values = {
+            self.AI_HARDWARE_FINGERPRINT_KEY: hardware_fingerprint,
+            self.AI_BACKEND_ID_KEY: backend_id,
+            self.AI_RUNTIME_VARIANT_ID_KEY: runtime_variant_id,
+            self.AI_DEVICE_ID_KEY: device_id or "",
+            self.AI_NATIVE_ARCHITECTURE_KEY: native_architecture,
+            self.AI_PROCESS_ARCHITECTURE_KEY: process_architecture,
+            self.AI_RUNNING_UNDER_EMULATION_KEY: bool(running_under_emulation),
+            self.AI_SELECTED_CONTEXT_TOKENS_KEY: int(context_tokens),
+            self.AI_SELECTED_CPU_THREADS_KEY: int(cpu_threads),
+            self.AI_SELECTED_GPU_LAYERS_KEY: "" if gpu_layers is None else int(gpu_layers),
+            self.AI_BACKEND_SELECTION_VERSION_KEY: self.BACKEND_SELECTION_VERSION,
+            self.AI_LAST_BACKEND_FAILURE_KEY: "",
+        }
+        for key, value in values.items():
+            self._settings.setValue(key, value)
+        self._settings.sync()
+
     def ai_custom_model_path(self) -> str:
         return self._string_value(self.AI_CUSTOM_MODEL_PATH_KEY, "")
 
@@ -258,6 +411,18 @@ class AppSettings:
         if isinstance(value, str):
             return value.lower() in {"1", "true", "yes", "on"}
         return bool(value)
+
+    def _set_string(self, key: str, value: str) -> None:
+        self._settings.setValue(key, str(value).strip())
+        self._settings.sync()
+
+    def _set_bool(self, key: str, value: bool) -> None:
+        self._settings.setValue(key, bool(value))
+        self._settings.sync()
+
+    def _set_int(self, key: str, value: int) -> None:
+        self._settings.setValue(key, int(value))
+        self._settings.sync()
 
     def _bounded_int(self, value: object, minimum: int, maximum: int, fallback: int) -> int:
         try:

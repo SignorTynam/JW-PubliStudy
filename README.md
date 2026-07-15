@@ -136,13 +136,23 @@ La prima configurazione puo richiedere diversi minuti e spazio su disco. I model
 - medium: Qwen2.5-7B-Instruct Q4_K_M GGUF, circa 4.68 GB
 - large: Qwen2.5-14B-Instruct Q4_K_M GGUF, circa 8.99 GB
 
-I modelli vengono scaricati da Hugging Face. Il runtime viene scaricato dalla latest release ufficiale di `ggml-org/llama.cpp`, scegliendo un asset Windows x64 CPU quando disponibile. In produzione bisogna aggiungere checksum SHA-256 verificati per modelli e runtime.
+I modelli vengono scaricati da Hugging Face. Il runtime viene risolto dai metadata reali della latest release ufficiale di `ggml-org/llama.cpp`. L'app distingue architettura nativa di Windows e architettura del processo: su ARM64 preferisce una build ARM64 nativa e considera x64 emulato soltanto come fallback. In produzione bisogna aggiungere checksum SHA-256 verificati per modelli e runtime.
+
+La selezione automatica usa capability effettive: inventario hardware, asset compatibile, validazione del runtime, device esposto dal runtime e memoria disponibile. Una GPU o NPU rilevata non viene dichiarata automaticamente utilizzabile. CUDA/Vulkan/OpenCL sono candidati soltanto quando il relativo runtime supera i probe; la CPU nativa resta il fallback stabile.
+
+Le NPU vengono mostrate nell'inventario quando Windows le espone, ma il backend NPU e attualmente **non disponibile**: non esiste ancora una combinazione verificata di runtime, provider, modello e generazione di prova. L'app non passa GGUF direttamente a Windows ML e non aggiunge flag HTP/NPU inventati.
+
+Modello e context dipendono anche dalla RAM disponibile, non solo da quella totale. I profili Automatico, Risparmio memoria e Prestazioni conservano tutti una riserva per Windows e per l'interfaccia.
 
 ### Per sviluppatori
 
 La nuova architettura si trova in `app/ai/`:
 
 - `hardware_check.py`: rileva sistema, architettura, RAM e spazio libero;
+- `hardware_profile.py` e `device_detector.py`: distinguono host/processo, emulazione e inventario GPU/NPU best effort;
+- `runtime_catalog.py`: descrive varianti e asset reali senza inventare URL;
+- `backends/`, `backend_selector.py` e `resource_planner.py`: probe, ranking, fallback e budget memoria;
+- `runtime_launch_plan.py`: comando esplicito con soli flag verificati;
 - `model_catalog.py`: catalogo modelli e URL placeholder;
 - `model_manager.py`: percorsi, verifica e stato locale dei modelli;
 - `download_worker.py`: download asincrono PySide6 con file `.part`;
@@ -155,6 +165,8 @@ La selezione del runtime latest release e in `app/ai/runtime_manager.py` e `app/
 Il binario runtime bundled puo essere messo in `runtime/`, seguendo `runtime/README.md`.
 
 La modalita manuale resta disponibile nelle Impostazioni avanzate per sviluppo o test con server esterni compatibili OpenAI, per esempio LM Studio o Ollama. Non e la modalita richiesta all'utente finale.
+
+Dettagli, matrice di supporto e test hardware manuali: [docs/hardware-backends.md](docs/hardware-backends.md).
 
 ## Test AI locale senza LM Studio/Ollama
 
@@ -188,6 +200,9 @@ Dati principali:
 - `chat_history.json`: cronologia chat locale
 - `models/`: modelli AI locali scaricati dall'app
 - `runtime/`: runtime AI locale scaricato o incluso in futuro
+- `runtime/<variante>/<release>/`: runtime gestiti side-by-side; `runtime/active.json` cambia solo dopo health check
+- `ai_hardware_profile.json`: profilo hardware locale senza serial number
+- `ai_backend_selection.json`: backend, modello, context, stime e fallback selezionati
 - QSettings: preferenze come lingua e configurazione modello locale
 
 ## Privacy
@@ -234,10 +249,10 @@ I test coprono catalogo modelli, classificazione hardware, gestione percorsi/ver
 - La ricerca delle fonti e testuale, non semantica.
 - Nessun OCR: i PDF scannerizzati senza testo potrebbero non essere indicizzabili.
 - Nessun cloud usato di default.
-- Gli URL di modelli e runtime sono ancora placeholder finche non vengono sostituiti con risorse reali e checksum.
+- I download non dispongono ancora di checksum SHA-256 pubblicati e fissati nel catalogo.
 
 ## Packaging futuro
 
 Per ora l'app si avvia da sorgente con Python.
 
-In futuro potra essere creato un installer Windows. I modelli AI non devono essere inclusi nella repository e non devono essere scaricati automaticamente dall'app.
+In futuro potra essere creato un installer Windows. I modelli AI non devono essere inclusi nella repository; il download gestito resta un'azione esplicita dell'utente durante la configurazione.
